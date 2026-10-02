@@ -2,12 +2,16 @@
 
 import { createServer, IncomingMessage, ServerResponse } from 'node:http'
 import { WebSocketServer, WebSocket } from 'ws'
-import { ErrorMessage } from '../../shared/types.js'
+import { RoomManager } from './room-manager.js'
+import { ErrorMessage, isAttendingMessage, WSMessage } from '../../shared/types.js'
 import { APP_VERSION } from '../../shared/version.js'
 
 const PORT = Number(process.env.PORT) || 3001
 const HOST = process.env.HOST || '0.0.0.0'
 const PING_INTERVAL = 30000
+
+// Registro de agentes y presencia (sala compartida).
+const roomManager = new RoomManager()
 
 // Servidor HTTP básico. Por ahora solo confirma que el servicio está activo.
 const httpServer = createServer((_req: IncomingMessage, res: ServerResponse) => {
@@ -23,6 +27,9 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   const sock = req.socket
   if (sock && typeof sock.setNoDelay === 'function') sock.setNoDelay(true)
 
+  // Id del agente, una vez que se identifica al conectarse.
+  let agentId: string | null = null
+
   // Mensaje de bienvenida al conectarse.
   ws.send(JSON.stringify({
     type: 'WELCOME',
@@ -31,8 +38,9 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   }))
 
   ws.on('message', (data: Buffer) => {
+    let message: WSMessage
     try {
-      JSON.parse(data.toString())
+      message = JSON.parse(data.toString())
     } catch {
       const error: ErrorMessage = {
         type: 'ERROR',
@@ -40,6 +48,23 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
         message: 'Formato de mensaje inválido'
       }
       ws.send(JSON.stringify(error))
+      return
+    }
+
+    // El primer mensaje debe identificar al agente (ATTENDING con su nombre).
+    if (!agentId) {
+      if (isAttendingMessage(message) && message.agent) {
+        agentId = roomManager.register(ws, message.agent)
+        roomManager.sendInitialState(agentId)
+      } else {
+        const error: ErrorMessage = {
+          type: 'ERROR',
+          code: 'AUTH_REQUIRED',
+          message: 'El primer mensaje debe incluir el nombre del agente'
+        }
+        ws.send(JSON.stringify(error))
+      }
+      return
     }
   })
 
