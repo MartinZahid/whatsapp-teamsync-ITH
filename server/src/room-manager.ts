@@ -1,7 +1,18 @@
 // Gestión de la sala de presencia: registro de agentes y difusión del estado.
 
 import { WebSocket } from 'ws'
-import { Agent, AgentStatus, PresenceUpdate, STATUS_COLORS } from '../../shared/types.js'
+import {
+  Agent,
+  AgentStatus,
+  PresenceUpdate,
+  WSMessage,
+  STATUS_COLORS,
+  isAttendingMessage,
+  isPausedMessage,
+  isAvailableMessage,
+  isOfflineMessage,
+  isDeleteAgentMessage
+} from '../../shared/types.js'
 import { APP_VERSION } from '../../shared/version.js'
 
 interface ClientConnection {
@@ -59,6 +70,38 @@ export class RoomManager {
     agent.status = status
     agent.contact = contact
     agent.color = STATUS_COLORS[status]
+  }
+
+  // Procesa un mensaje del agente y actualiza su estado.
+  handleMessage(agentId: string, message: WSMessage): void {
+    const agent = this.agents.get(agentId)
+    if (!agent) return
+
+    // Cualquier mensaje cuenta como señal de actividad.
+    agent.lastSeen = Date.now()
+
+    if (isAttendingMessage(message)) {
+      this.setStatus(agent, 'active', message.contact)
+      console.log(`[Servidor] ${agent.name} atiende: ${message.contact}`)
+    } else if (isPausedMessage(message)) {
+      this.setStatus(agent, 'paused')
+      console.log(`[Servidor] ${agent.name} en pausa`)
+    } else if (isAvailableMessage(message)) {
+      this.setStatus(agent, 'available')
+      console.log(`[Servidor] ${agent.name} disponible`)
+    } else if (isOfflineMessage(message)) {
+      this.setStatus(agent, 'offline')
+      console.log(`[Servidor] ${agent.name} desconectado`)
+    } else if (isDeleteAgentMessage(message)) {
+      this.agents.delete(agentId)
+      this.connections.delete(agentId)
+      console.log(`[Servidor] Agente eliminado: ${agent.name}`)
+    } else {
+      // Otros mensajes (por ejemplo HEARTBEAT) solo actualizan la actividad.
+      return
+    }
+
+    this.broadcastPresence()
   }
 
   // Lista de agentes para enviar al cliente.

@@ -66,6 +66,9 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       }
       return
     }
+
+    // Mensajes posteriores: actualizan el estado del agente.
+    roomManager.handleMessage(agentId, message)
   })
 
   // Ping periódico para detectar conexiones muertas.
