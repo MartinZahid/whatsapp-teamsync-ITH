@@ -15,6 +15,9 @@ import {
 } from '../../shared/types.js'
 import { APP_VERSION } from '../../shared/version.js'
 
+// Tiempo sin señal tras el cual un agente se considera desconectado.
+const HEARTBEAT_TIMEOUT_MS = 60000
+
 interface ClientConnection {
   ws: WebSocket
   agentName: string
@@ -102,6 +105,36 @@ export class RoomManager {
     }
 
     this.broadcastPresence()
+  }
+
+  // Marca al agente como desconectado cuando se cierra su conexión.
+  disconnect(agentId: string): void {
+    const conn = this.connections.get(agentId)
+    // Si ya hay una conexión nueva activa (reconexión), no lo marcamos desconectado.
+    if (conn && conn.ws.readyState === WebSocket.OPEN) return
+
+    this.connections.delete(agentId)
+    const agent = this.agents.get(agentId)
+    if (agent && agent.status !== 'offline') {
+      this.setStatus(agent, 'offline')
+      agent.lastSeen = Date.now()
+      this.broadcastPresence()
+      console.log(`[Servidor] Agente desconectado: ${agent.name}`)
+    }
+  }
+
+  // Marca como desconectados a los agentes que llevan mucho tiempo sin dar señal.
+  checkHeartbeats(): void {
+    const now = Date.now()
+    let changed = false
+    for (const agent of this.agents.values()) {
+      if (agent.status !== 'offline' && now - agent.lastSeen > HEARTBEAT_TIMEOUT_MS) {
+        this.setStatus(agent, 'offline')
+        changed = true
+        console.log(`[Servidor] Sin heartbeat de ${agent.name}: marcado como desconectado`)
+      }
+    }
+    if (changed) this.broadcastPresence()
   }
 
   // Lista de agentes para enviar al cliente.

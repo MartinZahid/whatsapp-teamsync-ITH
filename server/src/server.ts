@@ -9,9 +9,13 @@ import { APP_VERSION } from '../../shared/version.js'
 const PORT = Number(process.env.PORT) || 3001
 const HOST = process.env.HOST || '0.0.0.0'
 const PING_INTERVAL = 30000
+const HEARTBEAT_INTERVAL = 30000
 
 // Registro de agentes y presencia (sala compartida).
 const roomManager = new RoomManager()
+
+// Revisa cada 30 s qué agentes dejaron de dar señal.
+setInterval(() => roomManager.checkHeartbeats(), HEARTBEAT_INTERVAL)
 
 // Servidor HTTP básico. Por ahora solo confirma que el servicio está activo.
 const httpServer = createServer((_req: IncomingMessage, res: ServerResponse) => {
@@ -78,7 +82,10 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   }, PING_INTERVAL)
 
   ws.on('error', (err) => console.error('[Servidor] Error de WebSocket:', err))
-  ws.on('close', () => clearInterval(ping))
+  ws.on('close', () => {
+    clearInterval(ping)
+    if (agentId) roomManager.disconnect(agentId)
+  })
 })
 
 wss.on('error', (err) => console.error('[Servidor] Error del servidor:', err))
