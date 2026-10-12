@@ -49,10 +49,10 @@ function send(message) {
 }
 
 function applyAction() {
-  if (action === 'available') send({ type: 'AVAILABLE', agent: name })
+  if (action === 'attending') send({ type: 'ATTENDING', agent: name, contact, status: 'active' })
+  else if (action === 'available') send({ type: 'AVAILABLE', agent: name })
   else if (action === 'paused') send({ type: 'PAUSED', agent: name, reason: 'prueba' })
   else if (action === 'offline') send({ type: 'OFFLINE', agent: name })
-  // 'attending' ya se envió al conectar.
 }
 
 // Cierra limpiamente con Ctrl+C.
