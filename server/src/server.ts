@@ -1,4 +1,15 @@
 // Punto de entrada del servidor: levanta el servidor HTTP y el WebSocket.
+//
+// GUÍA DE LECTURA — cómo se conecta todo:
+//   - `http.createServer` crea un servidor HTTP normal (responde texto plano).
+//   - `WebSocketServer` se "monta" sobre ese mismo servidor: así el mismo
+//     puerto (3001) atiende HTTP y WebSocket a la vez.
+//   - Todo es ORIENTADO A EVENTOS: no hay un bucle que pregunte "¿hay algo?".
+//     En su lugar registramos funciones que se ejecutan cuando pasa algo:
+//       · wss.on('connection', ...) -> llegó un cliente nuevo
+//       · ws.on('message', ...)     -> llegó un mensaje
+//       · ws.on('close', ...)       -> se cerró la conexión
+//   - La lógica de presencia NO está aquí: se delega en `roomManager`.
 
 import { createServer, IncomingMessage, ServerResponse } from 'node:http'
 import { WebSocketServer, WebSocket } from 'ws'
@@ -6,24 +17,28 @@ import { RoomManager } from './room-manager.js'
 import { ErrorMessage, isAttendingMessage, WSMessage } from '../../shared/types.js'
 import { APP_VERSION } from '../../shared/version.js'
 
+// Configuración (se puede sobreescribir con variables de entorno PORT y HOST).
 const PORT = Number(process.env.PORT) || 3001
 const HOST = process.env.HOST || '0.0.0.0'
-const PING_INTERVAL = 30000
-const HEARTBEAT_INTERVAL = 30000
+const PING_INTERVAL = 30000    // ping cada 30 s para detectar conexiones muertas
+const HEARTBEAT_INTERVAL = 30000 // revisión del heartbeat cada 30 s
 
-// Registro de agentes y presencia (sala compartida).
+// Registro de agentes y presencia (sala compartida). UNA sola instancia.
 const roomManager = new RoomManager()
 
-// Revisa cada 30 s qué agentes dejaron de dar señal.
+// `setInterval` ejecuta la función cada X milisegundos, para siempre.
+// Aquí: revisa cada 30 s qué agentes dejaron de dar señal.
 setInterval(() => roomManager.checkHeartbeats(), HEARTBEAT_INTERVAL)
 
 // Servidor HTTP básico. Por ahora solo confirma que el servicio está activo.
+// (Más adelante aquí se servirán el dashboard y sus archivos.)
 const httpServer = createServer((_req: IncomingMessage, res: ServerResponse) => {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
   res.end('WhatsApp Team Sync - servidor WebSocket activo\n')
 })
 
 // El WebSocket se monta sobre el mismo servidor HTTP y puerto.
+// `{ server: httpServer }` = comparte el puerto; no se abre otro.
 const wss = new WebSocketServer({ server: httpServer })
 
 wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
@@ -35,6 +50,8 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   let agentId: string | null = null
 
   // Mensaje de bienvenida al conectarse.
+  // `JSON.stringify` convierte un objeto en texto para enviarlo por el socket;
+  // al otro lado se recupera con `JSON.parse` (ver test-client.mjs).
   ws.send(JSON.stringify({
     type: 'WELCOME',
     message: 'Conectado al servidor de WhatsApp Team Sync',
@@ -76,6 +93,8 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   })
 
   // Ping periódico para detectar conexiones muertas.
+  // `readyState` indica el estado del socket; OPEN = conectado y usable.
+  // `clearInterval` detiene el temporizador cuando la conexión ya no sirve.
   const ping = setInterval(() => {
     if (ws.readyState === WebSocket.OPEN) ws.ping()
     else clearInterval(ping)

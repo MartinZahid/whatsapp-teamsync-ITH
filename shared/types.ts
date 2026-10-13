@@ -1,20 +1,36 @@
 // Tipos compartidos entre la extensión y el servidor.
 // Son la fuente única de verdad del protocolo WebSocket.
+//
+// GUÍA DE LECTURA — conceptos de TypeScript que verás en este archivo:
+//   - `type`  define un alias. Aquí se usa para listar valores permitidos
+//             (una "unión"), p. ej. un estado solo puede ser uno de los cuatro.
+//   - `interface` describe la forma de un objeto (qué campos tiene y de qué tipo).
+//   - Los tipos NO existen cuando el programa corre: sirven en el editor y al
+//             compilar, para que no te equivoques escribiendo el código.
+//   - `isAlgoMessage(...)` es un "validador de tipo": recibe un mensaje genérico
+//             y le dice a TypeScript cuál es exactamente, según su campo `type`.
 
 // Estados posibles de un agente.
+// `type` + `|` = unión: el valor debe ser UNA de estas cadenas de texto.
 export type AgentStatus = 'active' | 'paused' | 'available' | 'offline'
 
 // Información de un agente tal como la ve el resto del equipo.
 export interface Agent {
-  id: string
-  name: string
-  status: AgentStatus
-  contact: string | null
-  color: string
-  lastSeen: number
+  id: string           // id interno que genera el servidor
+  name: string         // nombre con el que el agente se identifica
+  status: AgentStatus  // uno de los cuatro estados de arriba
+  contact: string | null // chat que atiende; `| null` = puede venir vacío
+  color: string        // color asociado al estado (para el panel/dashboard)
+  lastSeen: number     // última señal de actividad, en milisegundos (Date.now())
 }
 
 // --- Mensajes del cliente (extensión) hacia el servidor ---
+//
+// Cada mensaje tiene un campo `type` que lo distingue y el nombre del agente.
+// El servidor mira ese `type` para saber qué hacer (ver room-manager.ts).
+//
+// Nota didáctica: los mensajes viajan como TEXTO (JSON). Los objetos de abajo
+// son solo la forma que ese texto tiene una vez convertido con JSON.parse.
 
 export interface AttendingMessage {
   type: 'ATTENDING'
@@ -88,10 +104,13 @@ export type ServerToClientMessage =
   | PresenceUpdate
   | ErrorMessage
 
-// Cualquier mensaje que viaja por el socket.
+// Cualquier mensaje que viaja por el socket (de ida o de vuelta).
 export type WSMessage = ClientToServerMessage | ServerToClientMessage
 
 // --- Validadores de tipo (permiten estrechar el tipo en el servidor) ---
+//
+// Reciben un `WSMessage` y devuelven true/false. Cuando dan true, TypeScript ya
+// sabe el tipo exacto y deja acceder a sus campos con seguridad (p. ej. contact).
 
 export function isAttendingMessage(msg: WSMessage): msg is AttendingMessage {
   return msg.type === 'ATTENDING'
@@ -118,12 +137,16 @@ export function isHeartbeatMessage(msg: WSMessage): msg is HeartbeatMessage {
 }
 
 // --- Colores y etiquetas de cada estado ---
+//
+// `Record<AgentStatus, string>` = un objeto que tiene una entrada por cada
+// estado posible. Si mañana agregas un estado, TypeScript te obligará a
+// darle aquí su color y su etiqueta (no se te puede olvidar ninguno).
 
 export const STATUS_COLORS: Record<AgentStatus, string> = {
-  active: '#ef4444',
-  paused: '#f59e0b',
-  available: '#22c55e',
-  offline: '#9ca3af'
+  active: '#ef4444',   // rojo    - Atendiendo
+  paused: '#f59e0b',   // amarillo - Pausado
+  available: '#22c55e', // verde   - Disponible
+  offline: '#9ca3af'   // gris    - Desconectado
 }
 
 export const STATUS_LABELS: Record<AgentStatus, string> = {

@@ -1,4 +1,17 @@
 // Gestión de la sala de presencia: registro de agentes y difusión del estado.
+//
+// GUÍA DE LECTURA — el corazón del servidor:
+//   Este es el único archivo con una CLASE (`RoomManager`). La clase agrupa
+//   datos (los Map de abajo) y las acciones que los modifican (métodos).
+//   El servidor crea UNA instancia y la comparte entre todas las conexiones.
+//
+//   Flujo general:
+//     1. Un cliente se conecta y se identifica  -> register()
+//     2. Envía mensajes (atiende, pausa, etc.)  -> handleMessage()
+//     3. Al cerrar la pestaña                   -> disconnect()
+//     4. Si deja de dar señal (heartbeat)       -> checkHeartbeats()
+//   Cada cambio termina llamando a broadcastPresence(), que reenvía la lista
+//   completa de agentes a TODOS los conectados.
 
 import { WebSocket } from 'ws'
 import {
@@ -18,14 +31,18 @@ import { APP_VERSION } from '../../shared/version.js'
 // Tiempo sin señal tras el cual un agente se considera desconectado.
 const HEARTBEAT_TIMEOUT_MS = 60000
 
+// Empareja el agente (por id) con su conexión WebSocket.
 interface ClientConnection {
   ws: WebSocket
   agentName: string
   agentId: string
 }
 
+// `Map<clave, valor>` = diccionario: busca por clave en tiempo constante.
+// Aquí la clave es el id interno del agente.
 export class RoomManager {
   // Agentes registrados, indexados por su id interno.
+  // `private` = estos datos solo se usan dentro de la clase (nadie los toca desde fuera).
   private agents = new Map<string, Agent>()
   // Conexión de cada agente, indexada por su id interno.
   private connections = new Map<string, ClientConnection>()
@@ -83,6 +100,8 @@ export class RoomManager {
     // Cualquier mensaje cuenta como señal de actividad.
     agent.lastSeen = Date.now()
 
+    // Cada `isXMessage` viene de shared/types.ts. Al dar true, TypeScript ya
+    // sabe el tipo exacto del mensaje (y por eso `message.contact` es válido).
     if (isAttendingMessage(message)) {
       this.setStatus(agent, 'active', message.contact)
       console.log(`[Servidor] ${agent.name} atiende: ${message.contact}`)
