@@ -22,6 +22,7 @@ export interface Agent {
   contact: string | null // chat que atiende; `| null` = puede venir vacío
   color: string        // color asociado al estado (para el panel/dashboard)
   lastSeen: number     // última señal de actividad, en milisegundos (Date.now())
+  requesting: boolean  // true = pidió ayuda; es independiente de su estado
 }
 
 // --- Mensajes del cliente (extensión) hacia el servidor ---
@@ -65,6 +66,14 @@ export interface HeartbeatMessage {
   agent: string
 }
 
+// Solicitud de ayuda (RN-03). `requesting` en true la activa y en false la
+// cancela. No cambia el estado del agente: es un aviso independiente.
+export interface HelpRequestMessage {
+  type: 'HELP_REQUEST'
+  agent: string
+  requesting: boolean
+}
+
 export type ClientToServerMessage =
   | AttendingMessage
   | PausedMessage
@@ -72,6 +81,7 @@ export type ClientToServerMessage =
   | OfflineMessage
   | DeleteAgentMessage
   | HeartbeatMessage
+  | HelpRequestMessage
 
 // --- Mensajes del servidor hacia el cliente (extensión) ---
 
@@ -134,6 +144,10 @@ export function isDeleteAgentMessage(msg: WSMessage): msg is DeleteAgentMessage 
 
 export function isHeartbeatMessage(msg: WSMessage): msg is HeartbeatMessage {
   return msg.type === 'HEARTBEAT'
+}
+
+export function isHelpRequestMessage(msg: WSMessage): msg is HelpRequestMessage {
+  return msg.type === 'HELP_REQUEST'
 }
 
 // --- Colores y etiquetas de cada estado ---

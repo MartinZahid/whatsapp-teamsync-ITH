@@ -24,7 +24,8 @@ import {
   isPausedMessage,
   isAvailableMessage,
   isOfflineMessage,
-  isDeleteAgentMessage
+  isDeleteAgentMessage,
+  isHelpRequestMessage
 } from '../../shared/types.js'
 import { APP_VERSION } from '../../shared/version.js'
 
@@ -65,6 +66,8 @@ export class RoomManager {
       }
       this.setStatus(existing, 'available')
       existing.lastSeen = Date.now()
+      // La solicitud de ayuda se conserva en la reconexión; se limpia al
+      // desconectarse o cuando el agente la cancela con HELP_REQUEST.
       this.broadcastPresence()
       console.log(`[Servidor] Agente reconectado: ${name}`)
       return existing.id
@@ -78,7 +81,8 @@ export class RoomManager {
       status: 'available',
       contact: null,
       color: STATUS_COLORS.available,
-      lastSeen: Date.now()
+      lastSeen: Date.now(),
+      requesting: false
     })
     this.broadcastPresence()
     console.log(`[Servidor] Agente registrado: ${name}`)
@@ -113,7 +117,15 @@ export class RoomManager {
       console.log(`[Servidor] ${agent.name} disponible`)
     } else if (isOfflineMessage(message)) {
       this.setStatus(agent, 'offline')
+      // Una ayuda pendiente no sobrevive a una desconexión.
+      agent.requesting = false
       console.log(`[Servidor] ${agent.name} desconectado`)
+    } else if (isHelpRequestMessage(message)) {
+      // Solicita o cancela ayuda SIN tocar el estado ni el color.
+      agent.requesting = message.requesting
+      console.log(
+        `[Servidor] ${agent.name} ${message.requesting ? 'solicita ayuda' : 'cancela la solicitud de ayuda'}`
+      )
     } else if (isDeleteAgentMessage(message)) {
       this.agents.delete(agentId)
       this.connections.delete(agentId)
@@ -136,6 +148,8 @@ export class RoomManager {
     const agent = this.agents.get(agentId)
     if (agent && agent.status !== 'offline') {
       this.setStatus(agent, 'offline')
+      // Una ayuda pendiente no sobrevive a una desconexión real.
+      agent.requesting = false
       agent.lastSeen = Date.now()
       this.broadcastPresence()
       console.log(`[Servidor] Agente desconectado: ${agent.name}`)
@@ -149,6 +163,8 @@ export class RoomManager {
     for (const agent of this.agents.values()) {
       if (agent.status !== 'offline' && now - agent.lastSeen > HEARTBEAT_TIMEOUT_MS) {
         this.setStatus(agent, 'offline')
+        // Si dejó de dar señal, su solicitud de ayuda ya no es válida.
+        agent.requesting = false
         changed = true
         console.log(`[Servidor] Sin heartbeat de ${agent.name}: marcado como desconectado`)
       }
