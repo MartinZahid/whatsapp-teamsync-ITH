@@ -1,11 +1,13 @@
 // Cliente de prueba por consola para validar la presencia y el heartbeat.
 //
 // Uso:
-//   node scripts/test-client.mjs <nombre> [attending|available|paused|offline] [contacto]
+//   node scripts/test-client.mjs <nombre> [attending|available|paused|offline|help|nohelp] [contacto]
 //
 // Ejemplos (en terminales separadas):
 //   node scripts/test-client.mjs Ana attending "Cliente SUSPIROS"
 //   node scripts/test-client.mjs Luis available
+//   node scripts/test-client.mjs Luis help      (solicita ayuda)
+//   node scripts/test-client.mjs Luis nohelp    (la cancela)
 
 import { WebSocket } from 'ws'
 
@@ -34,7 +36,8 @@ ws.on('message', (data) => {
     console.log(`[${name}] presencia (${message.agents.length} agentes):`)
     for (const a of message.agents) {
       const contactInfo = a.contact ? ` - ${a.contact}` : ''
-      console.log(`   - ${a.name}: ${a.status}${contactInfo}`)
+      const helpInfo = a.requesting ? ' · solicita ayuda' : ''
+      console.log(`   - ${a.name}: ${a.status}${contactInfo}${helpInfo}`)
     }
   } else {
     console.log(`[${name}] ${message.type}: ${message.message ?? ''}`)
@@ -53,6 +56,8 @@ function applyAction() {
   else if (action === 'available') send({ type: 'AVAILABLE', agent: name })
   else if (action === 'paused') send({ type: 'PAUSED', agent: name, reason: 'prueba' })
   else if (action === 'offline') send({ type: 'OFFLINE', agent: name })
+  else if (action === 'help') send({ type: 'HELP_REQUEST', agent: name, requesting: true })
+  else if (action === 'nohelp') send({ type: 'HELP_REQUEST', agent: name, requesting: false })
 }
 
 // Cierra limpiamente con Ctrl+C.
