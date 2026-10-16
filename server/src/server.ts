@@ -77,6 +77,9 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       if (isAttendingMessage(message) && message.agent) {
         agentId = roomManager.register(ws, message.agent)
         roomManager.sendInitialState(agentId)
+        // El primer ATTENDING identifica al agente y además fija su estado,
+        // para que quede "Atendiendo" y no solo registrado como disponible.
+        roomManager.handleMessage(agentId, message)
       } else {
         const error: ErrorMessage = {
           type: 'ERROR',
