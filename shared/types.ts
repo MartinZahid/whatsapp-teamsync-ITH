@@ -102,6 +102,15 @@ export interface PresenceUpdate {
   agents: Agent[]
 }
 
+// Alerta de duplicidad (RN-07). El servidor la envía a todos cuando detecta
+// que dos o más agentes atienden el mismo contacto al mismo tiempo.
+export interface DuplicateAlertMessage {
+  type: 'DUPLICATE_ALERT'
+  contact: string
+  agents: Array<{ id: string; name: string }>
+  at: number
+}
+
 export interface ErrorMessage {
   type: 'ERROR'
   code: string
@@ -112,6 +121,7 @@ export type ServerToClientMessage =
   | WelcomeMessage
   | ServerInfoMessage
   | PresenceUpdate
+  | DuplicateAlertMessage
   | ErrorMessage
 
 // Cualquier mensaje que viaja por el socket (de ida o de vuelta).
@@ -148,6 +158,10 @@ export function isHeartbeatMessage(msg: WSMessage): msg is HeartbeatMessage {
 
 export function isHelpRequestMessage(msg: WSMessage): msg is HelpRequestMessage {
   return msg.type === 'HELP_REQUEST'
+}
+
+export function isDuplicateAlertMessage(msg: WSMessage): msg is DuplicateAlertMessage {
+  return msg.type === 'DUPLICATE_ALERT'
 }
 
 // --- Colores y etiquetas de cada estado ---

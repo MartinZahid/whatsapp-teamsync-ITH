@@ -17,7 +17,9 @@ import { WebSocket } from 'ws'
 import {
   Agent,
   AgentStatus,
+  DuplicateAlertMessage,
   PresenceUpdate,
+  ServerToClientMessage,
   WSMessage,
   STATUS_COLORS,
   isAttendingMessage,
@@ -104,10 +106,15 @@ export class RoomManager {
     // Cualquier mensaje cuenta como señal de actividad.
     agent.lastSeen = Date.now()
 
+    // Contacto que el agente acaba de empezar a atender. Se revisa al final,
+    // después de difundir la presencia, para detectar duplicidad (RN-07).
+    let duplicateContact: string | null = null
+
     // Cada `isXMessage` viene de shared/types.ts. Al dar true, TypeScript ya
     // sabe el tipo exacto del mensaje (y por eso `message.contact` es válido).
     if (isAttendingMessage(message)) {
       this.setStatus(agent, 'active', message.contact)
+      duplicateContact = message.contact
       console.log(`[Servidor] ${agent.name} atiende: ${message.contact}`)
     } else if (isPausedMessage(message)) {
       this.setStatus(agent, 'paused')
@@ -136,6 +143,40 @@ export class RoomManager {
     }
 
     this.broadcastPresence()
+
+    // Ya con la presencia actualizada, avisamos si hay duplicidad.
+    if (duplicateContact !== null) this.alertDuplicate(agent, duplicateContact)
+  }
+
+  // Normaliza un contacto para compararlo aunque cambien mayúsculas o espacios.
+  private normalizeContact(contact: string): string {
+    return contact.trim().replace(/\s+/g, ' ').toLowerCase()
+  }
+
+  // RN-07: avisa a todos si otro agente ya atiende el mismo contacto.
+  private alertDuplicate(agent: Agent, contact: string): void {
+    const key = this.normalizeContact(contact)
+    if (!key) return
+
+    const others = this.getAllAgents().filter(
+      (other) =>
+        other.id !== agent.id &&
+        other.status === 'active' &&
+        other.contact !== null &&
+        this.normalizeContact(other.contact) === key
+    )
+    if (others.length === 0) return
+
+    const alert: DuplicateAlertMessage = {
+      type: 'DUPLICATE_ALERT',
+      contact,
+      agents: [agent, ...others].map((a) => ({ id: a.id, name: a.name })),
+      at: Date.now()
+    }
+    console.log(
+      `[Servidor] Atención duplicada en "${contact}": ${alert.agents.map((a) => a.name).join(', ')}`
+    )
+    this.sendToAll(alert)
   }
 
   // Marca al agente como desconectado cuando se cierra su conexión.
@@ -180,6 +221,11 @@ export class RoomManager {
   // Envía la lista completa de agentes a todos los conectados.
   private broadcastPresence(): void {
     const message: PresenceUpdate = { type: 'PRESENCE_UPDATE', agents: this.getAllAgents() }
+    this.sendToAll(message)
+  }
+
+  // Envía un mensaje a todas las conexiones abiertas.
+  private sendToAll(message: ServerToClientMessage): void {
     const data = JSON.stringify(message)
     for (const conn of this.connections.values()) {
       if (conn.ws.readyState === WebSocket.OPEN) conn.ws.send(data)
