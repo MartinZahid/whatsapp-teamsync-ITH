@@ -8,6 +8,7 @@
 //   node scripts/test-client.mjs Luis available
 //   node scripts/test-client.mjs Luis help      (solicita ayuda)
 //   node scripts/test-client.mjs Luis nohelp    (la cancela)
+//   node scripts/test-client.mjs Luis attending "Cliente SUSPIROS"  (duplicidad)
 
 import { WebSocket } from 'ws'
 
@@ -39,6 +40,9 @@ ws.on('message', (data) => {
       const helpInfo = a.requesting ? ' · solicita ayuda' : ''
       console.log(`   - ${a.name}: ${a.status}${contactInfo}${helpInfo}`)
     }
+  } else if (message.type === 'DUPLICATE_ALERT') {
+    const names = message.agents.map((a) => a.name).join(' y ')
+    console.log(`[${name}] ¡DUPLICIDAD! "${message.contact}" lo atienden ${names}`)
   } else {
     console.log(`[${name}] ${message.type}: ${message.message ?? ''}`)
   }
