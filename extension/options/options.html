@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Opciones · WhatsApp Team Sync</title>
+    <link rel="stylesheet" href="./options.css" />
+  </head>
+  <body>
+    <header class="head">
+      <div class="logo">TS</div>
+      <div>
+        <h1>WhatsApp Team Sync</h1>
+        <p class="sub">Configuración de la extensión</p>
+      </div>
+    </header>
+    <main>
+      <section class="card">
+        <h2>Conexión</h2>
+        <label class="field">
+          <span>URL del servidor WebSocket</span>
+          <input id="server-url" type="text" placeholder="ws://localhost:3001" />
+        </label>
+        <button id="test" class="btn">Probar conexión</button>
+        <p id="result" class="result"></p>
+      </section>
+    </main>
+    <script type="module" src="./options.ts"></script>
+  </body>
+</html>
