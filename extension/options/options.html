@@ -14,6 +14,7 @@
         <p class="sub">Configuración de la extensión</p>
       </div>
     </header>
+
     <main>
       <section class="card">
         <h2>Conexión</h2>
@@ -21,10 +22,44 @@
           <span>URL del servidor WebSocket</span>
           <input id="server-url" type="text" placeholder="ws://localhost:3001" />
         </label>
-        <button id="test" class="btn">Probar conexión</button>
-        <p id="result" class="result"></p>
+        <div class="row">
+          <button id="test" class="btn btn-outline" type="button">Probar conexión</button>
+        </div>
+        <p id="test-result" class="result"></p>
       </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Agentes</h2>
+          <button id="add-agent" class="btn btn-small" type="button">+ Agregar agente</button>
+        </div>
+        <p class="hint">
+          Lista provisional para elegir el agente en el popup. El alta y la baja definitivas se
+          harán desde el dashboard.
+        </p>
+        <ul id="agent-list" class="list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Detección del chat</h2>
+        <label class="field">
+          <span>Selector del título del chat</span>
+          <input id="selector" type="text" placeholder="#main header span[title]" />
+        </label>
+        <p class="hint">
+          Si WhatsApp cambia su estructura, ajusta este selector. Valor por defecto:
+          <code>#main header span[title]</code>.
+        </p>
+      </section>
+
+      <div class="footer">
+        <button id="save" class="btn" type="button">Guardar cambios</button>
+        <span id="save-result" class="result"></span>
+      </div>
+
+      <p class="version">Versión 0.1.0 · Protocolo de presencia en tiempo real</p>
     </main>
+
     <script type="module" src="./options.ts"></script>
   </body>
 </html>

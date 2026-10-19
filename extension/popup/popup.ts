@@ -9,6 +9,7 @@ import {
   type AgentConfig
 } from '../src/lib/storage'
 import type { AppState, SwEvent, UiRequest } from '../src/lib/protocol'
+import { testConnection } from '../src/lib/test-connection'
 
 const agentSelect = document.getElementById('agent') as HTMLSelectElement
 const urlInput = document.getElementById('server-url') as HTMLInputElement
@@ -29,34 +30,6 @@ let alertTimer: ReturnType<typeof setTimeout> | null = null
 function request<T = unknown>(message: UiRequest): Promise<T> {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage(message, (response: T) => resolve(response))
-  })
-}
-
-function testConnection(url: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    let finished = false
-    let ws: WebSocket | null = null
-    const finish = (ok: boolean) => {
-      if (finished) return
-      finished = true
-      try {
-        ws?.close()
-      } catch {
-        // ya estaba cerrada
-      }
-      resolve(ok)
-    }
-
-    try {
-      ws = new WebSocket(url)
-    } catch {
-      resolve(false)
-      return
-    }
-
-    ws.addEventListener('open', () => finish(true))
-    ws.addEventListener('error', () => finish(false))
-    setTimeout(() => finish(false), 4000)
   })
 }
 
