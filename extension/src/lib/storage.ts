@@ -100,3 +100,11 @@ export async function getCurrentContact(): Promise<string | null> {
 export function saveCurrentContact(contact: string | null): Promise<void> {
   return write(KEYS.currentContact, contact)
 }
+
+export async function getPanelCollapsed(): Promise<boolean> {
+  return (await read<boolean>(KEYS.panelCollapsed)) ?? false
+}
+
+export function savePanelCollapsed(collapsed: boolean): Promise<void> {
+  return write(KEYS.panelCollapsed, collapsed)
+}
