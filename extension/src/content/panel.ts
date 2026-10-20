@@ -155,7 +155,7 @@ const STYLES = `
 function subtitle(agent: PanelAgent): string {
   const parts: string[] = [STATUS_LABELS[agent.status]]
   if (agent.contact) parts.push(agent.contact)
-  if (agent.requesting) parts.push('solicita ayuda')
+  if (agent.requesting) parts.push('pide ayuda')
   return parts.join(' · ')
 }
 
