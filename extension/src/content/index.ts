@@ -3,6 +3,7 @@
 
 import type { AppState, SwEvent, UiRequest } from '../lib/protocol'
 import { getConfig, getPresence } from '../lib/storage'
+import { startDetector } from './detector'
 import { mountPanel } from './panel'
 
 // Último estado recibido; se usa para saber qué pedir al pulsar un botón.
@@ -56,5 +57,10 @@ function connectPort(): void {
 
 void renderSaved()
 connectPort()
+
+// Avisa al service worker cada vez que se abre, cambia o se cierra el chat.
+startDetector({
+  onChange: (contact) => send({ type: 'CONTACT_CHANGED', contact })
+})
 
 console.log('[WTS] panel flotante montado en', location.href)
