@@ -11,21 +11,31 @@ import {
 import type { AppState, SwEvent, UiRequest } from '../src/lib/protocol'
 import { testConnection } from '../src/lib/test-connection'
 
-const agentSelect = document.getElementById('agent') as HTMLSelectElement
+const logo = document.getElementById('logo') as HTMLImageElement
+const currentBar = document.getElementById('current') as HTMLDivElement
+const currentDot = document.getElementById('current-dot') as HTMLSpanElement
+const currentName = document.getElementById('current-name') as HTMLSpanElement
+const currentBadge = document.getElementById('current-badge') as HTMLSpanElement
+const agentList = document.getElementById('agent-list') as HTMLUListElement
 const urlInput = document.getElementById('server-url') as HTMLInputElement
 const testButton = document.getElementById('test') as HTMLButtonElement
 const testResult = document.getElementById('test-result') as HTMLParagraphElement
-const dot = document.getElementById('dot') as HTMLSpanElement
-const statusText = document.getElementById('status-text') as HTMLSpanElement
-const statusDetail = document.getElementById('status-detail') as HTMLParagraphElement
 const pauseButton = document.getElementById('pause') as HTMLButtonElement
 const helpButton = document.getElementById('help') as HTMLButtonElement
-const agentsList = document.getElementById('agents') as HTMLUListElement
+const connectionBox = document.getElementById('connection') as HTMLDivElement
 const alertBox = document.getElementById('alert') as HTMLDivElement
 
 let config: AgentConfig = { name: '', serverUrl: DEFAULT_SERVER_URL }
 let appState: AppState | null = null
+let agents: Agent[] = []
+let names: string[] = []
 let alertTimer: ReturnType<typeof setTimeout> | null = null
+
+try {
+  logo.src = chrome.runtime.getURL('icons/icon32.png')
+} catch {
+  // Sin API de Chrome (por ejemplo, en una prueba local).
+}
 
 function request<T = unknown>(message: UiRequest): Promise<T> {
   return new Promise((resolve) => {
@@ -33,71 +43,108 @@ function request<T = unknown>(message: UiRequest): Promise<T> {
   })
 }
 
-function renderStatus(status: AppState['connection']['status'], message?: string): void {
-  dot.className =
-    'dot' + (status === 'connected' ? ' connected' : status === 'connecting' ? ' connecting' : '')
-  statusText.textContent =
-    status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando…' : 'Desconectado'
-  statusDetail.textContent = message ?? ''
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? '')
+    .join('')
 }
 
-function renderAgents(agents: Agent[]): void {
-  agentsList.replaceChildren()
+// Pinta una etiqueta de estado (o la solicitud de ayuda) con su color.
+function setBadge(badge: HTMLElement, status: AgentStatus, requesting: boolean): void {
+  badge.className = 'badge ' + (requesting ? 'help' : status)
+  badge.textContent = requesting ? 'Solicita ayuda' : STATUS_LABELS[status]
+}
 
-  if (agents.length === 0) {
-    const empty = document.createElement('li')
-    empty.className = 'agent'
-    empty.textContent = 'Sin agentes conectados'
-    agentsList.append(empty)
-    return
-  }
+// Pinta la lista de agentes; el seleccionado se resalta.
+function renderAgents(): void {
+  agentList.replaceChildren()
 
-  for (const agent of agents) {
+  for (const name of names) {
+    const agent = agents.find((item) => item.name === name)
+    const status = agent?.status ?? 'offline'
+    const requesting = agent?.requesting ?? false
+    const selected = name === config.name
+
     const item = document.createElement('li')
-    item.className = 'agent' + (agent.requesting ? ' help' : '')
 
-    const name = document.createElement('span')
-    name.className = 'agent-name'
+    const row = document.createElement('button')
+    row.type = 'button'
+    row.className = 'agent-row' + (selected ? ' selected' : '')
+    row.addEventListener('click', () => selectAgent(name))
 
-    const bullet = document.createElement('span')
-    bullet.className = 'dot'
-    bullet.style.background = STATUS_COLORS[agent.status]
+    const avatar = document.createElement('span')
+    avatar.className = 'avatar'
+    avatar.style.background = STATUS_COLORS[status]
+    avatar.textContent = initials(name)
 
     const label = document.createElement('span')
-    label.textContent = agent.name === config.name ? `${agent.name} (tú)` : agent.name
+    label.className = 'agent-name'
+    label.textContent = name
 
-    const pill = document.createElement('span')
-    pill.className = 'pill'
-    pill.style.background = STATUS_COLORS[agent.status]
-    pill.textContent = STATUS_LABELS[agent.status]
+    const badge = document.createElement('span')
+    setBadge(badge, status, requesting)
 
-    name.append(bullet, label)
-    item.append(name, pill)
-    agentsList.append(item)
+    row.append(avatar, label, badge)
+    item.append(row)
+    agentList.append(item)
   }
+}
+
+function selectAgent(name: string): void {
+  config = { ...config, name }
+  void saveConfig(config)
+  void request({ type: 'SET_CONFIG', config })
+  renderAgents()
+}
+
+// Barra superior: conexión, agente actual y su estado.
+function renderCurrent(status: AppState['connection']['status']): void {
+  const self = agents.find((agent) => agent.name === config.name)
+  const agentStatus: AgentStatus = self?.status ?? 'offline'
+  const requesting = self?.requesting ?? false
+
+  currentBar.classList.toggle('hidden', !config.name)
+  currentName.textContent = config.name || 'Sin agente'
+  currentDot.className = 'status-dot ' + status
+  currentDot.style.background = STATUS_COLORS[agentStatus]
+  setBadge(currentBadge, agentStatus, requesting)
+}
+
+function renderConnection(status: AppState['connection']['status']): void {
+  connectionBox.className =
+    'server-status' +
+    (status === 'disconnected' ? ' bad' : status === 'connecting' ? ' warn' : '')
+  connectionBox.textContent =
+    status === 'connected'
+      ? '✓ Conectado al servidor'
+      : status === 'connecting'
+        ? '… Conectando al servidor'
+        : '✗ Sin conexión con el servidor'
 }
 
 function applyState(state: AppState): void {
   appState = state
   config = state.config
+  agents = state.agents
 
-  if (config.name && agentSelect.value !== config.name) {
-    if (!Array.from(agentSelect.options).some((o) => o.value === config.name)) {
-      const option = document.createElement('option')
-      option.value = config.name
-      option.textContent = config.name
-      agentSelect.append(option)
-    }
-    agentSelect.value = config.name
+  if (config.name && !names.includes(config.name)) names.push(config.name)
+  if (document.activeElement !== urlInput && urlInput.value !== config.serverUrl) {
+    urlInput.value = config.serverUrl
   }
 
-  if (urlInput.value !== config.serverUrl) urlInput.value = config.serverUrl
+  renderAgents()
+  renderCurrent(state.connection.status)
+  renderConnection(state.connection.status)
 
-  renderStatus(state.connection.status, state.connection.message)
-  pauseButton.textContent = state.status === 'paused' ? 'Reanudar' : 'Pausar'
+  const paused = state.status === 'paused'
+  pauseButton.classList.toggle('resume', paused)
+  pauseButton.textContent = paused ? 'Reanudar' : 'Pausar'
+
   helpButton.textContent = state.requesting ? 'Cancelar ayuda' : 'Pedir ayuda'
-  helpButton.classList.toggle('active', state.requesting)
-  renderAgents(state.agents)
+  helpButton.classList.toggle('on', state.requesting)
 }
 
 function showDuplicate(contact: string, names: string[]): void {
@@ -107,41 +154,22 @@ function showDuplicate(contact: string, names: string[]): void {
   alertTimer = setTimeout(() => alertBox.classList.add('hidden'), 8000)
 }
 
-function fillAgentOptions(names: string[]): void {
-  agentSelect.replaceChildren()
-
-  const placeholder = document.createElement('option')
-  placeholder.value = ''
-  placeholder.textContent = '— Selecciona un agente —'
-  agentSelect.append(placeholder)
-
-  for (const name of names) {
-    const option = document.createElement('option')
-    option.value = name
-    option.textContent = name
-    agentSelect.append(option)
-  }
-}
-
 async function init(): Promise<void> {
   config = await getConfig()
-  fillAgentOptions(await getAgentsList())
-  agentSelect.value = config.name
+  names = await getAgentsList()
+  if (config.name && !names.includes(config.name)) names.push(config.name)
+
   urlInput.value = config.serverUrl
 
   const [presence, connection] = await Promise.all([getPresence(), getConnection()])
-  renderAgents(presence)
-  renderStatus(connection.status, connection.message)
+  agents = presence
+  renderAgents()
+  renderCurrent(connection.status)
+  renderConnection(connection.status)
 
   const response = await request<{ ok: boolean; state?: AppState }>({ type: 'GET_STATE' })
   if (response?.state) applyState(response.state)
 }
-
-agentSelect.addEventListener('change', () => {
-  config = { ...config, name: agentSelect.value }
-  void saveConfig(config)
-  void request({ type: 'SET_CONFIG', config })
-})
 
 urlInput.addEventListener('change', () => {
   config = { ...config, serverUrl: urlInput.value.trim() || DEFAULT_SERVER_URL }
@@ -152,18 +180,18 @@ urlInput.addEventListener('change', () => {
 
 testButton.addEventListener('click', async () => {
   const url = urlInput.value.trim() || DEFAULT_SERVER_URL
+  testResult.className = 'connection-result'
   testResult.textContent = 'Probando conexión…'
-  testResult.style.color = '#6b7280'
 
   const ok = await testConnection(url)
+  testResult.className = 'connection-result ' + (ok ? 'ok' : 'bad')
   testResult.textContent = ok
     ? '✓ Conexión establecida con el servidor.'
     : '✗ No se pudo conectar con el servidor.'
-  testResult.style.color = ok ? '#16a34a' : '#dc2626'
 })
 
 pauseButton.addEventListener('click', () => {
-  const next: AgentStatus = appState?.status === 'paused' ? 'available' : 'paused'
+  const next = appState?.status === 'paused' ? 'available' : 'paused'
   void request({ type: 'SET_STATUS', status: next })
 })
 
@@ -175,7 +203,7 @@ chrome.runtime.onMessage.addListener((event: SwEvent) => {
   if (event.type === 'STATE') {
     applyState(event.state)
   } else if (event.type === 'DUPLICATE') {
-    showDuplicate(event.contact, event.agents.map((a) => a.name))
+    showDuplicate(event.contact, event.agents.map((agent) => agent.name))
   }
 })
 

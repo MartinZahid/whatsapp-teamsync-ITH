@@ -8,42 +8,61 @@
   </head>
   <body>
     <header class="head">
-      <div class="logo">TS</div>
-      <div>
-        <h1>WhatsApp Team Sync</h1>
-        <p class="sub">Presencia del equipo</p>
-      </div>
+      <img id="logo" class="logo" alt="WhatsApp Team Sync" />
+      <h2>WhatsApp Team Sync</h2>
     </header>
 
     <main>
-      <section class="card">
-        <label class="label" for="agent">Agente</label>
-        <select id="agent" class="input"></select>
+      <div id="current" class="current-agent-bar hidden">
+        <span id="current-dot" class="status-dot disconnected"></span>
+        <span id="current-name" class="current-name">Sin agente</span>
+        <span id="current-badge" class="badge offline">Desconectado</span>
+      </div>
 
-        <label class="label" for="server-url">URL del servidor</label>
-        <div class="row">
-          <input id="server-url" class="input" type="text" placeholder="ws://localhost:3001" />
-          <button id="test" class="btn-ghost" type="button">Probar</button>
+      <section class="setup-card">
+        <div class="card-heading">
+          <span class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="7" />
+              <rect x="2" y="14" width="20" height="7" />
+              <path d="M6 6.5h.01M6 17.5h.01" />
+            </svg>
+          </span>
+          <div>
+            <h3>Servidor</h3>
+            <p>Dirección del servicio de presencia.</p>
+          </div>
         </div>
-        <p id="test-result" class="hint"></p>
+
+        <label for="server-url">URL del servidor WebSocket</label>
+        <input id="server-url" class="input" type="text" placeholder="ws://localhost:3001" />
+        <button id="test" class="btn btn-primary" type="button">Probar conexión</button>
+        <p id="test-result" class="connection-result"></p>
       </section>
 
-      <section class="card">
-        <div class="status-row">
-          <span id="dot" class="dot"></span>
-          <span id="status-text">Desconectado</span>
+      <section class="setup-card">
+        <div class="card-heading">
+          <span class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21a8 8 0 0 1 16 0" />
+            </svg>
+          </span>
+          <div>
+            <h3>Agente</h3>
+            <p>Selecciona tu nombre para conectarte.</p>
+          </div>
         </div>
-        <p id="status-detail" class="hint"></p>
-        <div class="actions">
-          <button id="pause" class="btn btn-pause" type="button">Pausar</button>
-          <button id="help" class="btn btn-help" type="button">Pedir ayuda</button>
-        </div>
+
+        <ul id="agent-list" class="agent-list"></ul>
       </section>
 
-      <section class="card">
-        <h2>Equipo</h2>
-        <ul id="agents" class="agents"></ul>
-      </section>
+      <div class="action-buttons">
+        <button id="pause" class="btn btn-secondary" type="button">Pausar</button>
+        <button id="help" class="btn btn-help" type="button">Pedir ayuda</button>
+      </div>
+
+      <div id="connection" class="server-status">✓ Conectado al servidor</div>
     </main>
 
     <div id="alert" class="alert hidden"></div>
