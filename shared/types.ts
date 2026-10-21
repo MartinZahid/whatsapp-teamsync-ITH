@@ -23,6 +23,7 @@ export interface Agent {
   color: string        // color asociado al estado (para el panel/dashboard)
   lastSeen: number     // última señal de actividad, en milisegundos (Date.now())
   requesting: boolean  // true = pidió ayuda; es independiente de su estado
+  activeSince: number | null // inicio de la atención actual; null si no atiende
 }
 
 // --- Mensajes del cliente (extensión) hacia el servidor ---

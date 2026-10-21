@@ -66,7 +66,10 @@ export class RoomManager {
       if (previous && previous.ws !== ws) {
         try { previous.ws.close() } catch { /* la conexión vieja ya no importa */ }
       }
-      this.setStatus(existing, 'available')
+      // Lo dejamos disponible, pero conservamos el contacto y el cronómetro:
+      // el primer mensaje de la reconexión vuelve a fijar el estado real.
+      existing.status = 'available'
+      existing.color = STATUS_COLORS.available
       existing.lastSeen = Date.now()
       // La solicitud de ayuda se conserva en la reconexión; se limpia al
       // desconectarse o cuando el agente la cancela con HELP_REQUEST.
@@ -84,7 +87,8 @@ export class RoomManager {
       contact: null,
       color: STATUS_COLORS.available,
       lastSeen: Date.now(),
-      requesting: false
+      requesting: false,
+      activeSince: null
     })
     this.broadcastPresence()
     console.log(`[Servidor] Agente registrado: ${name}`)
@@ -92,10 +96,22 @@ export class RoomManager {
   }
 
   // Cambia el estado de un agente y ajusta su color.
+  // También lleva el cronómetro de atención (`activeSince`): arranca al pasar a
+  // "active" y se limpia al salir de ese estado.
   private setStatus(agent: Agent, status: AgentStatus, contact: string | null = null): void {
+    const previousContact = agent.contact
     agent.status = status
     agent.contact = contact
     agent.color = STATUS_COLORS[status]
+
+    if (status === 'active') {
+      // Si sigue en el mismo chat (reconexión) no reiniciamos el cronómetro.
+      if (agent.activeSince === null || previousContact !== contact) {
+        agent.activeSince = Date.now()
+      }
+    } else {
+      agent.activeSince = null
+    }
   }
 
   // Procesa un mensaje del agente y actualiza su estado.
