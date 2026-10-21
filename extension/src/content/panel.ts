@@ -3,10 +3,14 @@
 // ¿Por qué Shadow DOM? Porque WhatsApp Web tiene sus propios estilos y podría
 // "romper" nuestro panel. El Shadow DOM crea una burbuja: los estilos de la
 // página no entran y los nuestros no salen. Así el panel se ve siempre igual.
+//
+// El aspecto reproduce el diseño original del prototipo (Whatsapp-teamSync).
 
 import type { AgentStatus } from '@shared/types'
 import { STATUS_COLORS, STATUS_LABELS } from '@shared/types'
-import { getPanelCollapsed, savePanelCollapsed } from '../lib/storage'
+import { getPanelCollapsed, savePanelCollapsed, type ConnectionState } from '../lib/storage'
+
+type Connection = ConnectionState['status']
 
 // Lo mínimo que el panel necesita de cada agente para dibujarlo.
 export interface PanelAgent {
@@ -14,6 +18,7 @@ export interface PanelAgent {
   status: AgentStatus
   contact: string | null
   requesting: boolean
+  activeSince: number | null
 }
 
 // Acciones que el panel puede pedirle al resto de la extensión.
@@ -24,7 +29,7 @@ export interface PanelActions {
 
 // Lo que devuelve `mountPanel` para poder actualizarlo desde fuera.
 export interface Panel {
-  render: (agents: PanelAgent[], selfName: string) => void
+  render: (agents: PanelAgent[], selfName: string, connection: Connection) => void
   setCollapsed: (collapsed: boolean) => void
   destroy: () => void
 }
@@ -34,129 +39,272 @@ const HOST_ID = 'wts-panel-root'
 // Estilos propios del panel (aislados por el Shadow DOM).
 const STYLES = `
   :host { all: initial; }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   .wrap {
     position: fixed;
+    top: 20px;
     right: 20px;
-    bottom: 20px;
     z-index: 2147483647;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   .panel {
-    width: 296px;
+    width: 300px;
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
     overflow: hidden;
-    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    transform-origin: top right;
   }
-  .panel.collapsed { width: auto; }
   .head {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 14px;
-    background: #1f3b73;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
     color: #ffffff;
   }
-  .dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: #22c55e;
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+  .brand-wrap { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .logo {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    object-fit: cover;
+    display: block;
     flex: 0 0 auto;
   }
-  .title { font-size: 14px; font-weight: 700; flex: 1; }
-  .count { font-size: 12px; opacity: 0.85; }
-  .collapse {
-    border: 0;
-    background: transparent;
-    color: #ffffff;
+  .brand {
     font-size: 14px;
-    line-height: 1;
-    padding: 4px 6px;
-    border-radius: 6px;
-    cursor: pointer;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .collapse:hover { background: rgba(255, 255, 255, 0.14); }
+  .toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 6px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .toggle:hover { background: rgba(255, 255, 255, 0.3); }
+  .toggle svg { width: 18px; height: 18px; stroke: currentColor; }
   .list {
     list-style: none;
-    margin: 0;
-    padding: 6px;
-    max-height: 280px;
+    max-height: 400px;
     overflow-y: auto;
+    padding: 8px;
   }
-  .panel.collapsed .list,
-  .panel.collapsed .actions { display: none; }
   .agent {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px;
-    border-radius: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    transition: background 0.15s;
+    position: relative;
   }
-  .agent.self { background: #f1f5f9; }
+  .agent:hover { background: #f3f4f6; }
+  .agent.self { background: #f0fdf4; }
   .agent.help {
-    background: #fdecec;
-    box-shadow: inset 0 0 0 2px #ef4444;
+    background: #fef2f2;
+    border-left: 3px solid #ef4444;
   }
   .avatar {
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
     flex: 0 0 auto;
   }
-  .info { min-width: 0; flex: 1; }
+  .info { flex: 1; min-width: 0; }
+  .name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
   .name {
     font-size: 13px;
     font-weight: 600;
-    color: #0f172a;
+    color: #1f2937;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .sub {
+  .timer {
+    font-size: 10px;
+    font-weight: 400;
+    color: #6b7280;
+    flex: 0 0 auto;
+  }
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 11px;
-    color: #64748b;
+    color: #4b5563;
+    margin-top: 2px;
+    min-width: 0;
+  }
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+  }
+  .status-text { flex: 0 0 auto; }
+  .contact {
+    font-size: 11px;
+    font-weight: 500;
+    color: #ef4444;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 160px;
   }
+  .contact.paused { color: #f59e0b; }
+  .help-note { color: #dc2626; font-weight: 600; flex: 0 0 auto; }
   .actions {
     display: flex;
-    gap: 8px;
-    padding: 10px 12px;
-    border-top: 1px solid #e2e8f0;
-    background: #f8fafc;
+    gap: 6px;
+    padding: 8px 12px;
+    border-top: 1px solid #e5e7eb;
   }
   .actions button {
     flex: 1;
-    border: 0;
-    border-radius: 9px;
-    padding: 9px 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: transparent;
+    font-family: inherit;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .actions button svg { width: 14px; height: 14px; }
+  .pause { color: #f59e0b; }
+  .pause:hover { background: #fef3c7; }
+  .pause.resume {
+    color: #9a3412;
+    border-color: #25d366;
+    background: #fed7aa;
+  }
+  .pause.resume:hover { background: #fdba74; }
+  .help-btn { color: #ef4444; }
+  .help-btn:hover { background: #fef2f2; }
+  .help-btn.on {
+    color: #991b1b;
+    border-color: #ef4444;
+    background: #fee2e2;
+  }
+  .help-btn.on:hover { background: #fecaca; }
+  .foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-top: 1px solid #fecaca;
+    background: #fef2f2;
+    font-size: 11px;
+    color: #991b1b;
+  }
+  .foot.connected {
+    background: #f0fdf4;
+    border-top-color: #86efac;
+    color: #166534;
+  }
+  .foot.connecting {
+    background: #fffbeb;
+    border-top-color: #fcd34d;
+    color: #92400e;
+  }
+  .foot-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+  }
+  .pill {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
     color: #ffffff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
   }
-  .pause { background: #f59e0b; }
-  .help { background: #ef4444; }
-  .help.on { background: #b91c1c; }
+  .pill:hover { opacity: 0.9; }
+  .pill svg { width: 18px; height: 18px; stroke: currentColor; }
+  .pill-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ffffff;
+  }
+  .pill.help-active {
+    background: #dc2626;
+    animation: wts-badge-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes wts-badge-pulse {
+    0%, 100% { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12); }
+    50% { box-shadow: 0 0 20px rgba(220, 38, 38, 0.5), 0 8px 32px rgba(0, 0, 0, 0.12); }
+  }
+  .wrap.collapsed .panel { display: none; }
+  .wrap.collapsed .pill { display: flex; }
+  @media (prefers-reduced-motion: reduce) {
+    .panel, .pill.help-active { animation: none !important; }
+  }
+  .list::-webkit-scrollbar { width: 6px; }
+  .list::-webkit-scrollbar-track { background: transparent; }
+  .list::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 3px;
+  }
 `
 
-// Texto secundario de cada agente: estado, contacto y aviso de ayuda.
-function subtitle(agent: PanelAgent): string {
-  const parts: string[] = [STATUS_LABELS[agent.status]]
-  if (agent.contact) parts.push(agent.contact)
-  if (agent.requesting) parts.push('pide ayuda')
-  return parts.join(' · ')
+const CHEVRON_RIGHT =
+  '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
+const CHEVRON_LEFT =
+  '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
+const PAUSE_ICON =
+  '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
+const PLAY_ICON =
+  '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
+const HELP_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>'
+
+// Cronómetro en formato HH:MM:SS desde el inicio de la atención.
+function elapsedSince(start: number | null): string | null {
+  if (start === null) return null
+  const total = Math.max(0, Math.floor((Date.now() - start) / 1000))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = total % 60
+  return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':')
 }
 
 // Dos letras para el avatar (por ejemplo "Ana Torres" -> "AT").
@@ -167,6 +315,19 @@ function initials(name: string): string {
     .slice(0, 2)
     .map((word) => word[0]?.toUpperCase() ?? '')
     .join('')
+}
+
+// Texto y color del pie según la conexión con el servidor.
+const FOOTER_TEXT: Record<Connection, string> = {
+  connected: 'Conectado al servidor · Heartbeat activo',
+  connecting: 'Conectando al servidor…',
+  disconnected: 'Sin conexión con el servidor'
+}
+
+const FOOTER_COLOR: Record<Connection, string> = {
+  connected: '#22c55e',
+  connecting: '#f59e0b',
+  disconnected: '#ef4444'
 }
 
 export function mountPanel(actions: PanelActions = {}): Panel {
@@ -187,39 +348,44 @@ export function mountPanel(actions: PanelActions = {}): Panel {
   wrap.className = 'wrap'
   shadow.appendChild(wrap)
 
+  // --- Panel expandido ---
   const panel = document.createElement('div')
   panel.className = 'panel'
   wrap.appendChild(panel)
 
-  // Cabecera: punto de conexión, título, contador y botón para contraer.
   const head = document.createElement('div')
   head.className = 'head'
   panel.appendChild(head)
 
-  const dot = document.createElement('span')
-  dot.className = 'dot'
-  head.appendChild(dot)
+  const brandWrap = document.createElement('div')
+  brandWrap.className = 'brand-wrap'
+  head.appendChild(brandWrap)
 
-  const title = document.createElement('span')
-  title.className = 'title'
-  title.textContent = 'Equipo'
-  head.appendChild(title)
+  const logo = document.createElement('img')
+  logo.className = 'logo'
+  logo.alt = 'WhatsApp Team Sync'
+  try {
+    logo.src = chrome.runtime.getURL('icons/icon32.png')
+  } catch {
+    // Sin acceso a la API de Chrome (por ejemplo, en una prueba local).
+  }
+  brandWrap.appendChild(logo)
 
-  const count = document.createElement('span')
-  count.className = 'count'
-  head.appendChild(count)
+  const brand = document.createElement('span')
+  brand.className = 'brand'
+  brand.textContent = 'WhatsApp Team Sync'
+  brandWrap.appendChild(brand)
 
-  const collapse = document.createElement('button')
-  collapse.type = 'button'
-  collapse.className = 'collapse'
-  head.appendChild(collapse)
+  const toggle = document.createElement('button')
+  toggle.type = 'button'
+  toggle.className = 'toggle'
+  toggle.innerHTML = CHEVRON_RIGHT
+  head.appendChild(toggle)
 
-  // Lista de agentes.
   const list = document.createElement('ul')
   list.className = 'list'
   panel.appendChild(list)
 
-  // Acciones del agente actual.
   const actionBar = document.createElement('div')
   actionBar.className = 'actions'
   panel.appendChild(actionBar)
@@ -227,44 +393,106 @@ export function mountPanel(actions: PanelActions = {}): Panel {
   const pauseButton = document.createElement('button')
   pauseButton.type = 'button'
   pauseButton.className = 'pause'
-  pauseButton.textContent = 'Pausar'
+  pauseButton.innerHTML = PAUSE_ICON
+  const pauseLabel = document.createElement('span')
+  pauseLabel.textContent = 'Pausar'
+  pauseButton.appendChild(pauseLabel)
   pauseButton.addEventListener('click', () => actions.onPause?.())
   actionBar.appendChild(pauseButton)
 
   const helpButton = document.createElement('button')
   helpButton.type = 'button'
-  helpButton.className = 'help'
-  helpButton.textContent = 'Pedir ayuda'
+  helpButton.className = 'help-btn'
+  helpButton.innerHTML = HELP_ICON
+  const helpLabel = document.createElement('span')
+  helpLabel.textContent = 'Pedir ayuda'
+  helpButton.appendChild(helpLabel)
   helpButton.addEventListener('click', () => actions.onHelp?.())
   actionBar.appendChild(helpButton)
 
-  // Contraer / expandir (se recuerda entre sesiones).
+  const foot = document.createElement('div')
+  foot.className = 'foot'
+  panel.appendChild(foot)
+
+  const footDot = document.createElement('span')
+  footDot.className = 'foot-dot'
+  foot.appendChild(footDot)
+
+  const footText = document.createElement('span')
+  foot.appendChild(footText)
+
+  // --- Panel colapsado (píldora) ---
+  const pill = document.createElement('button')
+  pill.type = 'button'
+  pill.className = 'pill'
+  wrap.appendChild(pill)
+
+  const pillDot = document.createElement('span')
+  pillDot.className = 'pill-dot'
+  pill.appendChild(pillDot)
+
+  const pillText = document.createElement('span')
+  pill.appendChild(pillText)
+
+  const pillArrow = document.createElement('span')
+  pillArrow.innerHTML = CHEVRON_LEFT
+  pill.appendChild(pillArrow)
+
+  // --- Estado interno ---
   let collapsed = false
+  let selfName = ''
+  let connection: Connection = 'disconnected'
+  let selfRequesting = false
+  let rows: Array<{ agent: PanelAgent; timer: HTMLElement }> = []
+
   const applyCollapsed = (value: boolean): void => {
     collapsed = value
-    panel.classList.toggle('collapsed', collapsed)
-    collapse.textContent = collapsed ? '▸' : '▾'
-    collapse.setAttribute('aria-label', collapsed ? 'Expandir panel' : 'Contraer panel')
+    wrap.classList.toggle('collapsed', collapsed)
+    toggle.setAttribute('aria-label', collapsed ? 'Expandir panel' : 'Contraer panel')
   }
 
-  collapse.addEventListener('click', () => {
+  toggle.addEventListener('click', () => {
     applyCollapsed(!collapsed)
     void savePanelCollapsed(collapsed)
   })
 
+  pill.addEventListener('click', () => {
+    applyCollapsed(false)
+    void savePanelCollapsed(false)
+  })
+
   void getPanelCollapsed().then((value) => applyCollapsed(value))
 
+  const updateFooter = (): void => {
+    foot.className = `foot ${connection}`
+    footText.textContent = FOOTER_TEXT[connection]
+    footDot.style.background = FOOTER_COLOR[connection]
+  }
+
+  const updateTimers = (): void => {
+    for (const row of rows) {
+      row.timer.textContent = elapsedSince(row.agent.activeSince) ?? ''
+    }
+  }
+
+  // Refresca los cronómetros una vez por segundo.
+  const ticker = setInterval(updateTimers, 1000)
+
   // Dibuja la lista completa. Se vuelve a llamar con cada actualización.
-  const render = (agents: PanelAgent[], selfName: string): void => {
+  const render = (agents: PanelAgent[], name: string, state: Connection): void => {
+    selfName = name
+    connection = state
+    rows = []
     list.replaceChildren()
 
     agents.forEach((agent) => {
+      const isSelf = agent.name === selfName
       const item = document.createElement('li')
       item.className = 'agent'
-      if (agent.name === selfName) item.classList.add('self')
+      if (isSelf) item.classList.add('self')
       if (agent.requesting) item.classList.add('help')
 
-      const avatar = document.createElement('span')
+      const avatar = document.createElement('div')
       avatar.className = 'avatar'
       avatar.style.background = STATUS_COLORS[agent.status]
       avatar.textContent = initials(agent.name)
@@ -273,39 +501,85 @@ export function mountPanel(actions: PanelActions = {}): Panel {
       const info = document.createElement('div')
       info.className = 'info'
 
-      const name = document.createElement('div')
-      name.className = 'name'
-      name.textContent = agent.name === selfName ? `${agent.name} (tú)` : agent.name
-      info.appendChild(name)
+      const nameRow = document.createElement('div')
+      nameRow.className = 'name-row'
 
-      const sub = document.createElement('div')
-      sub.className = 'sub'
-      sub.textContent = subtitle(agent)
-      info.appendChild(sub)
+      const nameEl = document.createElement('span')
+      nameEl.className = 'name'
+      nameEl.textContent = isSelf ? `${agent.name} (tú)` : agent.name
+      nameRow.appendChild(nameEl)
 
+      const timer = document.createElement('span')
+      timer.className = 'timer'
+      timer.textContent = elapsedSince(agent.activeSince) ?? ''
+      nameRow.appendChild(timer)
+      info.appendChild(nameRow)
+
+      const statusRow = document.createElement('div')
+      statusRow.className = 'status-row'
+
+      const statusDot = document.createElement('span')
+      statusDot.className = 'status-dot'
+      statusDot.style.background = STATUS_COLORS[agent.status]
+      statusRow.appendChild(statusDot)
+
+      const statusText = document.createElement('span')
+      statusText.className = 'status-text'
+      statusText.textContent = STATUS_LABELS[agent.status]
+      statusRow.appendChild(statusText)
+
+      if (agent.contact) {
+        const contact = document.createElement('span')
+        contact.className = 'contact'
+        if (agent.status === 'paused') contact.classList.add('paused')
+        contact.textContent = agent.contact
+        statusRow.appendChild(contact)
+      }
+
+      if (agent.requesting) {
+        const note = document.createElement('span')
+        note.className = 'help-note'
+        note.textContent = '· solicita ayuda'
+        statusRow.appendChild(note)
+      }
+
+      info.appendChild(statusRow)
       item.appendChild(info)
       list.appendChild(item)
+      rows.push({ agent, timer })
     })
 
-    const online = agents.filter((agent) => agent.status !== 'offline').length
-    count.textContent = `${online} en línea`
-
-    // El botón de ayuda refleja si el agente actual ya la pidió.
+    // La píldora muestra cuántos agentes están en línea.
     const self = agents.find((agent) => agent.name === selfName)
-    const requesting = self?.requesting ?? false
-    helpButton.classList.toggle('on', requesting)
-    helpButton.textContent = requesting ? 'Cancelar ayuda' : 'Pedir ayuda'
+    const online = agents.filter((agent) => agent.status !== 'offline').length
+    pillText.textContent = `Agentes: ${online}`
 
-    pauseButton.textContent = self?.status === 'paused' ? 'Reanudar' : 'Pausar'
+    // El botón de ayuda y la píldora reflejan si el agente actual pidió ayuda.
+    selfRequesting = self?.requesting ?? false
+    pill.classList.toggle('help-active', selfRequesting)
+    helpButton.classList.toggle('on', selfRequesting)
+    helpLabel.textContent = selfRequesting ? 'Cancelar ayuda' : 'Pedir ayuda'
+
+    // Pausar / Reanudar según el estado del agente actual.
+    const paused = self?.status === 'paused'
+    pauseButton.classList.toggle('resume', paused)
+    pauseButton.replaceChildren(
+      ...(paused ? [document.createRange().createContextualFragment(PLAY_ICON)] : [document.createRange().createContextualFragment(PAUSE_ICON)]),
+      Object.assign(document.createElement('span'), { textContent: paused ? 'Disponible' : 'Pausar' })
+    )
+
+    updateFooter()
   }
 
-  // Permite contraer/expandir desde fuera (por ejemplo, al iniciar).
   const setCollapsed = (value: boolean): void => {
     applyCollapsed(value)
     void savePanelCollapsed(value)
   }
 
-  const destroy = (): void => host.remove()
+  const destroy = (): void => {
+    clearInterval(ticker)
+    host.remove()
+  }
 
   return { render, setCollapsed, destroy }
 }

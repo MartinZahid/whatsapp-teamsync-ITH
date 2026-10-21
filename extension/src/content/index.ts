@@ -2,7 +2,7 @@
 // Monta el panel flotante y lo mantiene sincronizado con el service worker.
 
 import type { AppState, SwEvent, UiRequest } from '../lib/protocol'
-import { getConfig, getPresence } from '../lib/storage'
+import { getConfig, getConnection, getPresence } from '../lib/storage'
 import { startDetector } from './detector'
 import { mountPanel } from './panel'
 
@@ -30,13 +30,17 @@ function send(request: UiRequest): void {
 
 function render(state: AppState): void {
   latest = state
-  panel.render(state.agents, state.config.name)
+  panel.render(state.agents, state.config.name, state.connection.status)
 }
 
 // Pinta algo mientras llega el primer estado real.
 async function renderSaved(): Promise<void> {
-  const [config, presence] = await Promise.all([getConfig(), getPresence()])
-  panel.render(presence, config.name)
+  const [config, presence, connection] = await Promise.all([
+    getConfig(),
+    getPresence(),
+    getConnection()
+  ])
+  panel.render(presence, config.name, connection.status)
 }
 
 // Canal permanente con el service worker. Él envía el estado al conectarse y
