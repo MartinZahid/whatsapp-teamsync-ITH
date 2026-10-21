@@ -18,6 +18,8 @@ export interface DetectorOptions {
 }
 
 export interface Detector {
+  // Vuelve a avisar del chat actual, aunque no haya cambiado.
+  refresh: () => void
   stop: () => void
 }
 
@@ -78,6 +80,10 @@ export function startDetector(options: DetectorOptions): Detector {
   })
 
   return {
+    refresh: () => {
+      last = undefined
+      check()
+    },
     stop: () => {
       stopped = true
       if (timer) clearTimeout(timer)

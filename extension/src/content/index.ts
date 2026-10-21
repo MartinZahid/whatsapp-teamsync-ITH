@@ -59,8 +59,15 @@ void renderSaved()
 connectPort()
 
 // Avisa al service worker cada vez que se abre, cambia o se cierra el chat.
-startDetector({
+const detector = startDetector({
   onChange: (contact) => send({ type: 'CONTACT_CHANGED', contact })
+})
+
+// Con varias pestañas de WhatsApp abiertas, solo debe mandar la que se está
+// viendo. Al volver a esta pestaña, reenviamos su chat para que el servidor
+// refleje el que realmente está en pantalla.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') detector.refresh()
 })
 
 console.log('[WTS] panel flotante montado en', location.href)

@@ -294,7 +294,24 @@ function disconnect(): void {
   void setConnection('disconnected', 'Desconectado manualmente')
 }
 
-function handleUiRequest(message: UiRequest): Promise<unknown> | unknown {
+// Con varias pestañas de WhatsApp abiertas, cada una detecta su propio chat.
+// Solo aceptamos el aviso de la pestaña que el usuario está viendo; así el
+// estado no "parpadea" entre pestañas de fondo.
+async function isActiveTab(tabId?: number): Promise<boolean> {
+  // Los mensajes del popup u opciones no vienen de una pestaña: se aceptan.
+  if (tabId === undefined) return true
+  try {
+    const [active] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
+    return active?.id === tabId
+  } catch {
+    return true
+  }
+}
+
+function handleUiRequest(
+  message: UiRequest,
+  sender?: chrome.runtime.MessageSender
+): Promise<unknown> | unknown {
   switch (message.type) {
     case 'GET_STATE':
       return { ok: true, state: snapshot() }
@@ -315,16 +332,18 @@ function handleUiRequest(message: UiRequest): Promise<unknown> | unknown {
       void applyHelp(message.requesting)
       return { ok: true }
     case 'CONTACT_CHANGED':
-      void applyContact(message.contact)
+      void isActiveTab(sender?.tab?.id).then((active) => {
+        if (active) void applyContact(message.contact)
+      })
       return { ok: true }
   }
 }
 
 // --- Eventos de Chrome ------------------------------------------------------
 
-chrome.runtime.onMessage.addListener((message: UiRequest, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: UiRequest, sender, sendResponse) => {
   ready.then(
-    () => sendResponse(handleUiRequest(message)),
+    () => sendResponse(handleUiRequest(message, sender)),
     (error) => sendResponse({ ok: false, error: String(error) })
   )
   return true
