@@ -14,7 +14,11 @@ export const KEYS = {
 
 export const DEFAULT_SERVER_URL = 'ws://localhost:3001'
 export const DEFAULT_AGENTS = ['Ana Torres', 'Luis Ramírez', 'Pedro Sánchez', 'María Gómez']
-export const DEFAULT_SELECTOR = '#main header span[title]'
+// Encabezado de la conversación abierta en WhatsApp Web (nombre del contacto).
+export const DEFAULT_SELECTOR =
+  'div[data-testid="conversation-panel-wrapper"] header span[data-testid="conversation-info-header-chat-title"]'
+// Selector de versiones anteriores; solo se usa para migrar lo que haya guardado.
+const LEGACY_SELECTOR = '#main header span[title]'
 
 export interface AgentConfig {
   name: string
@@ -60,7 +64,11 @@ export function saveAgentsList(agents: string[]): Promise<void> {
 }
 
 export async function getSelectors(): Promise<Selectors> {
-  return (await read<Selectors>(KEYS.selectors)) ?? { chatTitle: DEFAULT_SELECTOR }
+  const saved = await read<Selectors>(KEYS.selectors)
+  if (!saved) return { chatTitle: DEFAULT_SELECTOR }
+  // Si quedó guardado el selector viejo, usamos el nuevo sin obligar a cambiar.
+  if (saved.chatTitle === LEGACY_SELECTOR) return { chatTitle: DEFAULT_SELECTOR }
+  return saved
 }
 
 export function saveSelectors(selectors: Selectors): Promise<void> {

@@ -57,11 +57,19 @@
 
       <section class="card">
         <h2>Detección del chat</h2>
-        <label class="label" for="selector">Selector del título del chat</label>
-        <input id="selector" class="input" type="text" placeholder="#main header span[title]" />
+        <label class="label" for="selector">Selector del nombre del contacto</label>
+        <input
+          id="selector"
+          class="input"
+          type="text"
+          placeholder='div[data-testid="conversation-panel-wrapper"] header span[data-testid="conversation-info-header-chat-title"]'
+        />
         <p class="hint">
           Si WhatsApp cambia su estructura, ajusta este selector. Valor por defecto:
-          <code>#main header span[title]</code>.
+          <code
+            >div[data-testid="conversation-panel-wrapper"] header
+            span[data-testid="conversation-info-header-chat-title"]</code
+          >.
         </p>
       </section>
 
