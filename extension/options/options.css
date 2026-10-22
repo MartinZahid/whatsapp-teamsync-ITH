@@ -1,106 +1,50 @@
-:root {
-  --blue: #1f3b73;
-  --green: #25d366;
-  --red: #ef4444;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --bg: #f1f5f9;
-}
-
-* {
-  box-sizing: border-box;
-}
+/* Estilos mínimos: la página de opciones es de uso interno y no se muestra. */
 
 body {
-  margin: 0;
+  margin: 24px;
   font-family: 'Segoe UI', system-ui, sans-serif;
-  color: var(--text);
-  background: var(--bg);
-  min-height: 100vh;
-}
-
-.head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 28px;
-  background: var(--blue);
-  color: #fff;
-}
-
-.logo {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: var(--green);
-  display: grid;
-  place-items: center;
-  font-weight: 800;
   font-size: 14px;
-}
-
-h1 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.sub {
-  margin: 3px 0 0;
-  font-size: 12px;
-  opacity: 0.8;
+  color: #111b21;
+  background: #ffffff;
 }
 
 main {
   max-width: 720px;
-  margin: 28px auto 40px;
-  padding: 0 20px;
-  display: grid;
-  gap: 16px;
 }
 
-.card {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
+h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
 }
 
-.card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 6px;
+.lead {
+  margin: 0 0 20px;
+  color: #667781;
+}
+
+section {
+  margin-bottom: 24px;
 }
 
 h2 {
-  margin: 0 0 14px;
+  margin: 0 0 10px;
+  padding-bottom: 4px;
   font-size: 15px;
-  color: var(--blue);
+  border-bottom: 1px solid #d0d5dd;
 }
 
-.card-head h2 {
-  margin: 0;
-}
-
-.field {
+.label {
   display: block;
-  margin-bottom: 12px;
-  font-size: 12px;
+  margin-bottom: 6px;
   font-weight: 600;
-  color: var(--muted);
 }
 
-.field input {
-  display: block;
+.input {
   width: 100%;
-  margin-top: 6px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 13px;
-  font-family: inherit;
+  padding: 6px 8px;
+  border: 1px solid #9aa3ad;
+  font: inherit;
+  background: #ffffff;
 }
 
 .row {
@@ -108,45 +52,65 @@ h2 {
   gap: 8px;
 }
 
+.row .input {
+  flex: 1;
+}
+
 .btn {
-  border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-  background: var(--green);
+  border: 1px solid #9aa3ad;
+  padding: 6px 12px;
+  font: inherit;
+  font-weight: 600;
+  color: #111b21;
+  background: #f0f0f0;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.btn-outline {
-  background: #fff;
-  color: var(--blue);
-  border: 1px solid var(--blue);
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.btn-small {
-  padding: 7px 12px;
-  font-size: 12px;
+.card-head h2 {
+  flex: 1;
 }
 
 .result {
-  margin: 10px 0 0;
-  font-size: 12px;
-  color: var(--muted);
+  margin: 8px 0 0;
+  color: #667781;
 }
 
 .hint {
-  margin: 6px 0 12px;
+  color: #667781;
   font-size: 12px;
-  color: var(--muted);
-  line-height: 1.45;
 }
 
-.hint code {
-  background: #f1f5f9;
-  border-radius: 4px;
-  padding: 1px 5px;
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.info {
+  border: 1px solid #d0d5dd;
+  padding: 8px;
+}
+
+.info span {
+  display: block;
+  color: #667781;
+  font-size: 12px;
+}
+
+.info strong.ok {
+  color: #16a34a;
+}
+
+.info strong.bad {
+  color: #dc2626;
 }
 
 .list {
@@ -154,47 +118,56 @@ h2 {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .list li {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .list input {
   flex: 1;
-  padding: 9px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 13px;
-  font-family: inherit;
+  padding: 6px 8px;
+  border: 1px solid #9aa3ad;
+  font: inherit;
 }
 
 .remove {
-  border: none;
-  background: #fdecec;
-  color: #b91c1c;
-  border-radius: 8px;
-  padding: 0 12px;
-  font-size: 12px;
-  font-weight: 700;
+  border: 1px solid #9aa3ad;
+  background: #f0f0f0;
+  padding: 0 10px;
+  font: inherit;
   cursor: pointer;
 }
 
 .footer {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
 .footer .result {
   margin: 0;
 }
 
+.danger {
+  border: 1px solid #dc2626;
+  padding: 12px;
+}
+
+.danger h2 {
+  color: #b91c1c;
+  border-bottom-color: #f3b4b4;
+}
+
+.danger p {
+  color: #667781;
+}
+
 .version {
-  margin: 0;
   text-align: center;
   font-size: 11px;
-  color: var(--muted);
+  color: #667781;
 }

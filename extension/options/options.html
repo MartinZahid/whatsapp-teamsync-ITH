@@ -7,31 +7,46 @@
     <link rel="stylesheet" href="./options.css" />
   </head>
   <body>
-    <header class="head">
-      <div class="logo">TS</div>
-      <div>
-        <h1>WhatsApp Team Sync</h1>
-        <p class="sub">Configuración de la extensión</p>
-      </div>
-    </header>
-
     <main>
+      <h1>Configuración de WhatsApp Team Sync</h1>
+      <p class="lead">Ajustes de conexión y preferencias de la extensión.</p>
+
       <section class="card">
-        <h2>Conexión</h2>
-        <label class="field">
-          <span>URL del servidor WebSocket</span>
-          <input id="server-url" type="text" placeholder="ws://localhost:3001" />
-        </label>
+        <h2>Servidor de comunicaciones</h2>
+        <label class="label" for="server-url">URL del servidor WebSocket</label>
         <div class="row">
-          <button id="test" class="btn btn-outline" type="button">Probar conexión</button>
+          <input id="server-url" class="input" type="text" placeholder="ws://localhost:3001" />
+          <button id="test" class="btn btn-green" type="button">Probar conexión</button>
         </div>
         <p id="test-result" class="result"></p>
       </section>
 
       <section class="card">
+        <h2>Información del sistema</h2>
+        <div class="grid">
+          <div class="info">
+            <span>Versión de la extensión</span>
+            <strong id="version">0.1.0</strong>
+          </div>
+          <div class="info">
+            <span>Estado del servidor</span>
+            <strong id="server-state">Desconectado</strong>
+          </div>
+          <div class="info">
+            <span>Agente configurado</span>
+            <strong id="agent-name">—</strong>
+          </div>
+          <div class="info">
+            <span>Reconexión automática</span>
+            <strong>Habilitada (backoff exponencial)</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
         <div class="card-head">
           <h2>Agentes</h2>
-          <button id="add-agent" class="btn btn-small" type="button">+ Agregar agente</button>
+          <button id="add-agent" class="btn btn-green btn-small" type="button">+ Agregar agente</button>
         </div>
         <p class="hint">
           Lista provisional para elegir el agente en el popup. El alta y la baja definitivas se
@@ -42,10 +57,8 @@
 
       <section class="card">
         <h2>Detección del chat</h2>
-        <label class="field">
-          <span>Selector del título del chat</span>
-          <input id="selector" type="text" placeholder="#main header span[title]" />
-        </label>
+        <label class="label" for="selector">Selector del título del chat</label>
+        <input id="selector" class="input" type="text" placeholder="#main header span[title]" />
         <p class="hint">
           Si WhatsApp cambia su estructura, ajusta este selector. Valor por defecto:
           <code>#main header span[title]</code>.
@@ -53,9 +66,15 @@
       </section>
 
       <div class="footer">
-        <button id="save" class="btn" type="button">Guardar cambios</button>
+        <button id="save" class="btn btn-green" type="button">Guardar cambios</button>
         <span id="save-result" class="result"></span>
       </div>
+
+      <section class="card danger">
+        <h2>Zona de riesgo</h2>
+        <p>Restablezca la configuración guardada y vuelva a los valores por defecto.</p>
+        <button id="reset" class="btn btn-red" type="button">Restablecer configuración</button>
+      </section>
 
       <p class="version">Versión 0.1.0 · Protocolo de presencia en tiempo real</p>
     </main>
