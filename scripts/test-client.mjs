@@ -22,8 +22,7 @@ const ws = new WebSocket(url)
 ws.on('open', () => {
   console.log(`[${name}] conectado a ${url}`)
 
-  // El primer mensaje identifica al agente (lo registra como activo).
-  send({ type: 'ATTENDING', agent: name, contact, status: 'active' })
+  // El primer mensaje (cualquiera) identifica al agente y fija su estado.
   applyAction()
 
   // Señal de actividad cada 30 segundos.
@@ -43,6 +42,8 @@ ws.on('message', (data) => {
   } else if (message.type === 'DUPLICATE_ALERT') {
     const names = message.agents.map((a) => a.name).join(' y ')
     console.log(`[${name}] ¡DUPLICIDAD! "${message.contact}" lo atienden ${names}`)
+  } else if (message.type === 'ERROR' && message.code === 'REPLACED') {
+    console.log(`[${name}] reemplazado: ${message.message}`)
   } else {
     console.log(`[${name}] ${message.type}: ${message.message ?? ''}`)
   }
@@ -56,7 +57,7 @@ function send(message) {
 }
 
 function applyAction() {
-  if (action === 'attending') send({ type: 'ATTENDING', agent: name, contact, status: 'active' })
+  if (action === 'attending') send({ type: 'ATTENDING', agent: name, contact })
   else if (action === 'available') send({ type: 'AVAILABLE', agent: name })
   else if (action === 'paused') send({ type: 'PAUSED', agent: name, reason: 'prueba' })
   else if (action === 'offline') send({ type: 'OFFLINE', agent: name })
