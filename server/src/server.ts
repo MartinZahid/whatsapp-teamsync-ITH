@@ -11,102 +11,81 @@
 //       · ws.on('close', ...)       -> se cerró la conexión
 //   - La lógica de presencia NO está aquí: se delega en `roomManager`.
 
-import { createServer, IncomingMessage, ServerResponse } from 'node:http'
+import { createServer } from 'node:http'
 import { WebSocketServer, WebSocket } from 'ws'
 import { RoomManager } from './room-manager.js'
-import { ErrorMessage, isAttendingMessage, WSMessage } from '../../shared/types.js'
+import type { ClientToServerMessage, ErrorCode } from '../../shared/types.js'
 import { APP_VERSION } from '../../shared/version.js'
 
 // Configuración (se puede sobreescribir con variables de entorno PORT y HOST).
 const PORT = Number(process.env.PORT) || 3001
 const HOST = process.env.HOST || '0.0.0.0'
-const PING_INTERVAL = 30000    // ping cada 30 s para detectar conexiones muertas
-const HEARTBEAT_INTERVAL = 30000 // revisión del heartbeat cada 30 s
+const HEARTBEAT_CHECK_MS = 30000 // revisión del heartbeat cada 30 s (RN-04)
 
 // Registro de agentes y presencia (sala compartida). UNA sola instancia.
 const roomManager = new RoomManager()
 
 // `setInterval` ejecuta la función cada X milisegundos, para siempre.
 // Aquí: revisa cada 30 s qué agentes dejaron de dar señal.
-setInterval(() => roomManager.checkHeartbeats(), HEARTBEAT_INTERVAL)
+setInterval(() => roomManager.checkHeartbeats(), HEARTBEAT_CHECK_MS)
 
 // Servidor HTTP básico. Por ahora solo confirma que el servicio está activo.
 // (Más adelante aquí se servirán el dashboard y sus archivos.)
-const httpServer = createServer((_req: IncomingMessage, res: ServerResponse) => {
+const httpServer = createServer((_req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
   res.end('WhatsApp Team Sync - servidor WebSocket activo\n')
 })
 
-// El WebSocket se monta sobre el mismo servidor HTTP y puerto.
-// `{ server: httpServer }` = comparte el puerto; no se abre otro.
+// El WebSocket comparte el puerto del servidor HTTP.
 const wss = new WebSocketServer({ server: httpServer })
 
-wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-  // Envía los mensajes pequeños sin esperar, para reducir la latencia.
-  const sock = req.socket
-  if (sock && typeof sock.setNoDelay === 'function') sock.setNoDelay(true)
+function sendError(ws: WebSocket, code: ErrorCode, message: string): void {
+  ws.send(JSON.stringify({ type: 'ERROR', code, message }))
+}
 
-  // Id del agente, una vez que se identifica al conectarse.
+wss.on('connection', (ws, req) => {
+  // Envía los mensajes pequeños sin esperar, para reducir la latencia.
+  req.socket.setNoDelay(true)
+
+  // Id del agente, una vez que se identifica.
   let agentId: string | null = null
 
-  // Mensaje de bienvenida al conectarse.
-  // `JSON.stringify` convierte un objeto en texto para enviarlo por el socket;
-  // al otro lado se recupera con `JSON.parse` (ver test-client.mjs).
+  // `JSON.stringify` convierte un objeto en texto para enviarlo por el socket.
   ws.send(JSON.stringify({
     type: 'WELCOME',
     message: 'Conectado al servidor de WhatsApp Team Sync',
     protocol: APP_VERSION
   }))
 
-  ws.on('message', (data: Buffer) => {
-    let message: WSMessage
+  ws.on('message', (data) => {
+    let message: ClientToServerMessage
     try {
       message = JSON.parse(data.toString())
     } catch {
-      const error: ErrorMessage = {
-        type: 'ERROR',
-        code: 'PARSE_ERROR',
-        message: 'Formato de mensaje inválido'
-      }
-      ws.send(JSON.stringify(error))
+      sendError(ws, 'PARSE_ERROR', 'Formato de mensaje inválido')
       return
     }
 
-    // El primer mensaje debe identificar al agente (ATTENDING con su nombre).
+    // El primer mensaje (cualquiera) identifica al agente por su nombre.
     if (!agentId) {
-      if (isAttendingMessage(message) && message.agent) {
-        agentId = roomManager.register(ws, message.agent)
-        roomManager.sendInitialState(agentId)
-        // El primer ATTENDING identifica al agente y además fija su estado,
-        // para que quede "Atendiendo" y no solo registrado como disponible.
-        roomManager.handleMessage(agentId, message)
-      } else {
-        const error: ErrorMessage = {
-          type: 'ERROR',
-          code: 'AUTH_REQUIRED',
-          message: 'El primer mensaje debe incluir el nombre del agente'
-        }
-        ws.send(JSON.stringify(error))
+      if (typeof message?.agent !== 'string' || !message.agent.trim()) {
+        sendError(ws, 'AUTH_REQUIRED', 'El primer mensaje debe incluir el nombre del agente')
+        return
       }
+      agentId = roomManager.register(ws, message.agent.trim())
+      // Primero se aplica el estado que trae el mensaje y luego se manda el
+      // estado inicial, para que el agente ya se vea con su estado real.
+      roomManager.handleMessage(agentId, message)
+      roomManager.sendInitialState(agentId)
       return
     }
 
-    // Mensajes posteriores: actualizan el estado del agente.
     roomManager.handleMessage(agentId, message)
   })
 
-  // Ping periódico para detectar conexiones muertas.
-  // `readyState` indica el estado del socket; OPEN = conectado y usable.
-  // `clearInterval` detiene el temporizador cuando la conexión ya no sirve.
-  const ping = setInterval(() => {
-    if (ws.readyState === WebSocket.OPEN) ws.ping()
-    else clearInterval(ping)
-  }, PING_INTERVAL)
-
   ws.on('error', (err) => console.error('[Servidor] Error de WebSocket:', err))
   ws.on('close', () => {
-    clearInterval(ping)
-    if (agentId) roomManager.disconnect(agentId)
+    if (agentId) roomManager.disconnect(agentId, ws)
   })
 })
 
