@@ -9,6 +9,7 @@
 import type { AgentStatus } from '@shared/types'
 import { STATUS_COLORS, STATUS_LABELS } from '@shared/types'
 import { getPanelCollapsed, savePanelCollapsed, type ConnectionState } from '../lib/storage'
+import { ALERT_MS, CONNECTION_LABELS, duplicateText, initials } from '../lib/ui'
 
 type Connection = ConnectionState['status']
 
@@ -18,7 +19,7 @@ export interface PanelAgent {
   status: AgentStatus
   contact: string | null
   requesting: boolean
-  activeSince: number | null
+  attendingSince: number | null
 }
 
 // Acciones que el panel puede pedirle al resto de la extensión.
@@ -30,6 +31,8 @@ export interface PanelActions {
 // Lo que devuelve `mountPanel` para poder actualizarlo desde fuera.
 export interface Panel {
   render: (agents: PanelAgent[], selfName: string, connection: Connection) => void
+  // Muestra unos segundos el aviso de atención duplicada (RN-07).
+  showDuplicate: (contact: string, names: string[]) => void
   setCollapsed: (collapsed: boolean) => void
   destroy: () => void
 }
@@ -96,6 +99,15 @@ const STYLES = `
   }
   .toggle:hover { background: rgba(255, 255, 255, 0.3); }
   .toggle svg { width: 18px; height: 18px; stroke: currentColor; }
+  .alert {
+    padding: 8px 16px;
+    background: #fef2f2;
+    border-bottom: 1px solid #fecaca;
+    color: #991b1b;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .alert[hidden] { display: none; }
   .list {
     list-style: none;
     max-height: 400px;
@@ -307,23 +319,6 @@ function elapsedSince(start: number | null): string | null {
   return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':')
 }
 
-// Dos letras para el avatar (por ejemplo "Ana Torres" -> "AT").
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
-// Texto y color del pie según la conexión con el servidor.
-const FOOTER_TEXT: Record<Connection, string> = {
-  connected: 'Conectado al servidor · Heartbeat activo',
-  connecting: 'Conectando al servidor…',
-  disconnected: 'Sin conexión con el servidor'
-}
-
 const FOOTER_COLOR: Record<Connection, string> = {
   connected: '#22c55e',
   connecting: '#f59e0b',
@@ -382,6 +377,11 @@ export function mountPanel(actions: PanelActions = {}): Panel {
   toggle.innerHTML = CHEVRON_RIGHT
   head.appendChild(toggle)
 
+  const alertBox = document.createElement('div')
+  alertBox.className = 'alert'
+  alertBox.hidden = true
+  panel.appendChild(alertBox)
+
   const list = document.createElement('ul')
   list.className = 'list'
   panel.appendChild(list)
@@ -393,10 +393,12 @@ export function mountPanel(actions: PanelActions = {}): Panel {
   const pauseButton = document.createElement('button')
   pauseButton.type = 'button'
   pauseButton.className = 'pause'
-  pauseButton.innerHTML = PAUSE_ICON
+  const pauseIcon = document.createElement('span')
+  pauseIcon.style.display = 'contents'
+  pauseIcon.innerHTML = PAUSE_ICON
   const pauseLabel = document.createElement('span')
   pauseLabel.textContent = 'Pausar'
-  pauseButton.appendChild(pauseLabel)
+  pauseButton.append(pauseIcon, pauseLabel)
   pauseButton.addEventListener('click', () => actions.onPause?.())
   actionBar.appendChild(pauseButton)
 
@@ -465,13 +467,16 @@ export function mountPanel(actions: PanelActions = {}): Panel {
 
   const updateFooter = (): void => {
     foot.className = `foot ${connection}`
-    footText.textContent = FOOTER_TEXT[connection]
+    footText.textContent =
+      connection === 'connected'
+        ? `${CONNECTION_LABELS.connected} · Heartbeat activo`
+        : CONNECTION_LABELS[connection]
     footDot.style.background = FOOTER_COLOR[connection]
   }
 
   const updateTimers = (): void => {
     for (const row of rows) {
-      row.timer.textContent = elapsedSince(row.agent.activeSince) ?? ''
+      row.timer.textContent = elapsedSince(row.agent.attendingSince) ?? ''
     }
   }
 
@@ -511,7 +516,7 @@ export function mountPanel(actions: PanelActions = {}): Panel {
 
       const timer = document.createElement('span')
       timer.className = 'timer'
-      timer.textContent = elapsedSince(agent.activeSince) ?? ''
+      timer.textContent = elapsedSince(agent.attendingSince) ?? ''
       nameRow.appendChild(timer)
       info.appendChild(nameRow)
 
@@ -563,12 +568,20 @@ export function mountPanel(actions: PanelActions = {}): Panel {
     // Pausar / Reanudar según el estado del agente actual.
     const paused = self?.status === 'paused'
     pauseButton.classList.toggle('resume', paused)
-    pauseButton.replaceChildren(
-      ...(paused ? [document.createRange().createContextualFragment(PLAY_ICON)] : [document.createRange().createContextualFragment(PAUSE_ICON)]),
-      Object.assign(document.createElement('span'), { textContent: paused ? 'Disponible' : 'Pausar' })
-    )
+    pauseIcon.innerHTML = paused ? PLAY_ICON : PAUSE_ICON
+    pauseLabel.textContent = paused ? 'Reanudar' : 'Pausar'
 
     updateFooter()
+  }
+
+  let alertTimer: ReturnType<typeof setTimeout> | null = null
+  const showDuplicate = (contact: string, names: string[]): void => {
+    alertBox.textContent = duplicateText(contact, names)
+    alertBox.hidden = false
+    // Si está colapsado, lo abrimos para que el aviso se vea.
+    applyCollapsed(false)
+    if (alertTimer) clearTimeout(alertTimer)
+    alertTimer = setTimeout(() => (alertBox.hidden = true), ALERT_MS)
   }
 
   const setCollapsed = (value: boolean): void => {
@@ -578,8 +591,9 @@ export function mountPanel(actions: PanelActions = {}): Panel {
 
   const destroy = (): void => {
     clearInterval(ticker)
+    if (alertTimer) clearTimeout(alertTimer)
     host.remove()
   }
 
-  return { render, setCollapsed, destroy }
+  return { render, showDuplicate, setCollapsed, destroy }
 }

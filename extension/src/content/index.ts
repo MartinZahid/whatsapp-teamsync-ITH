@@ -50,6 +50,7 @@ function connectPort(): void {
 
   port.onMessage.addListener((event: SwEvent) => {
     if (event.type === 'STATE') render(event.state)
+    else if (event.type === 'DUPLICATE') panel.showDuplicate(event.contact, event.agents.map((a) => a.name))
   })
 
   // Si el service worker se suspende, el puerto se cierra: reconectamos.

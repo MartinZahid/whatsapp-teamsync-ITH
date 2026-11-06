@@ -243,7 +243,7 @@ label {
 
 .badge.available { background: var(--primary-light); color: var(--primary-dark); }
 .badge.paused { background: #fef3c7; color: #92400e; }
-.badge.active { background: #fee2e2; color: #991b1b; }
+.badge.attending { background: #fee2e2; color: #991b1b; }
 .badge.offline { background: #f3f4f6; color: var(--muted); }
 .badge.help { background: #fee2e2; color: #dc2626; }
 

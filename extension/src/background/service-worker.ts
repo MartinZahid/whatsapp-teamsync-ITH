@@ -5,7 +5,7 @@
 // inactivo. Por eso el heartbeat y la reconexión también se apoyan en
 // chrome.alarms, que despiertan al worker cada 30 segundos.
 
-import type { Agent, AgentStatus } from '@shared/types'
+import type { Agent, AgentStatus, ClientToServerMessage, ServerToClientMessage } from '@shared/types'
 import {
   DEFAULT_AGENTS,
   DEFAULT_SERVER_URL,
@@ -117,13 +117,7 @@ function connect(): void {
   ws.addEventListener('open', () => {
     if (socket !== ws) return
     attempts = 0
-    // El primer mensaje identifica al agente (regla del servidor).
-    send({
-      type: 'ATTENDING',
-      agent: config.name,
-      contact: currentContact ?? 'sin chat',
-      status: 'active'
-    })
+    // El primer mensaje (el estado real) identifica al agente en el servidor.
     applyStatus()
     if (requesting) send({ type: 'HELP_REQUEST', agent: config.name, requesting: true })
     void setConnection('connected')
@@ -141,8 +135,10 @@ function connect(): void {
   ws.addEventListener('close', () => {
     if (socket !== ws) return
     socket = null
+    // Si fue manual o por REPLACED, ya se dejó el mensaje correcto.
+    if (manualDisconnect) return
     void setConnection('disconnected', 'Conexión cerrada')
-    if (!manualDisconnect) scheduleReconnect()
+    scheduleReconnect()
   })
 
   ws.addEventListener('error', () => {
@@ -180,52 +176,63 @@ function scheduleReconnect(): void {
   void setConnection('disconnected', `Reintentando en ${Math.round(delay / 1000)} s`)
 }
 
-function send(message: unknown): void {
+function send(message: ClientToServerMessage): void {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message))
 }
 
+// Estado que de verdad se manda al servidor: "Atendiendo" solo si hay un chat
+// abierto (así nunca se manda un contacto inventado como "sin chat").
+function effectiveStatus(): AgentStatus {
+  return desiredStatus === 'attending' && !currentContact ? 'available' : desiredStatus
+}
+
 function applyStatus(): void {
-  if (desiredStatus === 'active') {
-    send({
-      type: 'ATTENDING',
-      agent: config.name,
-      contact: currentContact ?? 'sin chat',
-      status: 'active'
-    })
-  } else if (desiredStatus === 'paused') {
-    send({ type: 'PAUSED', agent: config.name, reason: 'manual' })
-  } else if (desiredStatus === 'offline') {
-    send({ type: 'OFFLINE', agent: config.name })
-  } else {
-    send({ type: 'AVAILABLE', agent: config.name })
+  const agent = config.name
+  switch (effectiveStatus()) {
+    case 'attending':
+      send({ type: 'ATTENDING', agent, contact: currentContact ?? '' })
+      break
+    case 'paused':
+      send({ type: 'PAUSED', agent, reason: 'manual' })
+      break
+    case 'offline':
+      send({ type: 'OFFLINE', agent })
+      break
+    default:
+      send({ type: 'AVAILABLE', agent })
   }
 }
 
-function handleServerMessage(message: {
-  type?: string
-  agents?: Agent[]
-  contact?: string
-  message?: string
-}): void {
+// Si el servidor nos ve en un estado distinto al nuestro (por ejemplo, nos
+// marcó Desconectado por un heartbeat tardío pero el socket sigue abierto),
+// reenviamos el estado real.
+function resyncIfNeeded(): void {
+  if (!config.name || socket?.readyState !== WebSocket.OPEN) return
+  const self = agents.find((agent) => agent.name === config.name)
+  if (self?.status !== effectiveStatus()) applyStatus()
+}
+
+function handleServerMessage(message: ServerToClientMessage): void {
   switch (message.type) {
     case 'SERVER_INFO':
     case 'PRESENCE_UPDATE':
-      agents = message.agents ?? []
+      agents = message.agents
       void savePresence(agents)
       emitState()
+      resyncIfNeeded()
       break
     case 'DUPLICATE_ALERT':
-      emit({
-        type: 'DUPLICATE',
-        contact: message.contact ?? '',
-        agents: (message.agents ?? []).map((a) => ({ id: a.id, name: a.name }))
-      })
+      emit({ type: 'DUPLICATE', contact: message.contact, agents: message.agents })
       flashBadge()
       break
     case 'ERROR':
-      void setConnection('disconnected', message.message ?? 'Error del servidor')
-      break
-    default:
+      if (message.code === 'REPLACED') {
+        // Otro navegador tomó este agente: no reintentamos, o se tumbarían en bucle.
+        manualDisconnect = true
+        void setConnection('disconnected', 'Este agente se abrió en otro navegador')
+      } else {
+        console.warn('[WTS] Error del servidor:', message.code, message.message)
+      }
       break
   }
 }
@@ -240,13 +247,14 @@ function flashBadge(): void {
 // --- Acciones pedidas por las interfaces ------------------------------------
 
 async function applyStatusChange(status: AgentStatus): Promise<void> {
-  desiredStatus = status
+  // Al reanudar con un chat abierto, el agente vuelve a "Atendiendo" (RN-01).
+  desiredStatus = status === 'available' && currentContact ? 'attending' : status
   await saveStatus(status)
   applyStatus()
   emitState()
 }
 
-async function applyHelp(value: boolean): Promise<void> {
+function applyHelp(value: boolean): void {
   requesting = value
   send({ type: 'HELP_REQUEST', agent: config.name, requesting: value })
   emitState()
@@ -259,7 +267,7 @@ async function applyContact(contact: string | null): Promise<void> {
   // Si el agente está en pausa o desconectado, el cambio de chat no lo altera.
   if (desiredStatus === 'paused' || desiredStatus === 'offline') return
 
-  desiredStatus = contact ? 'active' : 'available'
+  desiredStatus = contact ? 'attending' : 'available'
   await saveStatus(desiredStatus)
   applyStatus()
   emitState()
@@ -329,7 +337,7 @@ function handleUiRequest(
       void applyStatusChange(message.status)
       return { ok: true }
     case 'SET_HELP':
-      void applyHelp(message.requesting)
+      applyHelp(message.requesting)
       return { ok: true }
     case 'CONTACT_CHANGED':
       void isActiveTab(sender?.tab?.id).then((active) => {

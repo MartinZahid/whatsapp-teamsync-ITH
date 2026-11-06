@@ -5,11 +5,11 @@ import {
   getConfig,
   getConnection,
   getPresence,
-  saveConfig,
   type AgentConfig
 } from '../src/lib/storage'
 import type { AppState, SwEvent, UiRequest } from '../src/lib/protocol'
 import { testConnection } from '../src/lib/test-connection'
+import { ALERT_MS, CONNECTION_LABELS, duplicateText, initials } from '../src/lib/ui'
 
 const logo = document.getElementById('logo') as HTMLImageElement
 const currentBar = document.getElementById('current') as HTMLDivElement
@@ -41,15 +41,6 @@ function request<T = unknown>(message: UiRequest): Promise<T> {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage(message, (response: T) => resolve(response))
   })
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase() ?? '')
-    .join('')
 }
 
 // Pinta una etiqueta de estado (o la solicitud de ayuda) con su color.
@@ -95,7 +86,7 @@ function renderAgents(): void {
 
 function selectAgent(name: string): void {
   config = { ...config, name }
-  void saveConfig(config)
+  // El service worker guarda la configuración y reconecta.
   void request({ type: 'SET_CONFIG', config })
   renderAgents()
 }
@@ -117,12 +108,8 @@ function renderConnection(status: AppState['connection']['status']): void {
   connectionBox.className =
     'server-status' +
     (status === 'disconnected' ? ' bad' : status === 'connecting' ? ' warn' : '')
-  connectionBox.textContent =
-    status === 'connected'
-      ? '✓ Conectado al servidor'
-      : status === 'connecting'
-        ? '… Conectando al servidor'
-        : '✗ Sin conexión con el servidor'
+  const icon = status === 'connected' ? '✓' : status === 'connecting' ? '…' : '✗'
+  connectionBox.textContent = `${icon} ${CONNECTION_LABELS[status]}`
 }
 
 function applyState(state: AppState): void {
@@ -148,10 +135,10 @@ function applyState(state: AppState): void {
 }
 
 function showDuplicate(contact: string, names: string[]): void {
-  alertBox.textContent = `Atención duplicada: "${contact}" (${names.join(', ')})`
+  alertBox.textContent = duplicateText(contact, names)
   alertBox.classList.remove('hidden')
   if (alertTimer) clearTimeout(alertTimer)
-  alertTimer = setTimeout(() => alertBox.classList.add('hidden'), 8000)
+  alertTimer = setTimeout(() => alertBox.classList.add('hidden'), ALERT_MS)
 }
 
 async function init(): Promise<void> {
@@ -174,7 +161,6 @@ async function init(): Promise<void> {
 urlInput.addEventListener('change', () => {
   config = { ...config, serverUrl: urlInput.value.trim() || DEFAULT_SERVER_URL }
   urlInput.value = config.serverUrl
-  void saveConfig(config)
   void request({ type: 'SET_CONFIG', config })
 })
 

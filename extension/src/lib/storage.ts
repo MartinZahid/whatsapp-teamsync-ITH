@@ -94,7 +94,10 @@ export function saveConnection(connection: ConnectionState): Promise<void> {
 }
 
 export async function getSavedStatus(): Promise<AgentStatus> {
-  return (await read<AgentStatus>(KEYS.status)) ?? 'available'
+  const saved = await read<string>(KEYS.status)
+  // Versiones anteriores guardaban 'active'; hoy el estado se llama 'attending'.
+  if (saved === 'active') return 'attending'
+  return (saved as AgentStatus | undefined) ?? 'available'
 }
 
 export function saveStatus(status: AgentStatus): Promise<void> {
