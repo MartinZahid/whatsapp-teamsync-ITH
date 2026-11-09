@@ -10,9 +10,8 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "paths": {
-      "@shared/*": ["../shared/*"]
+      "@shared/*": ["../shared/*"] 
     }
   },
   "include": ["src/**/*.ts", "popup/**/*.ts", "options/**/*.ts", "../shared/**/*.ts"]

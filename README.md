@@ -29,11 +29,16 @@ npm install
 
 ## Estructura
 
+El servidor está organizado por capas. Ver [docs/arquitectura.md](docs/arquitectura.md).
+
 ```
 server/
   src/
-    server.ts        # Servidor HTTP + WebSocket
-    room-manager.ts  # Registro de agentes y presencia
+    server.ts        # Arranque: crea y une las capas
+    transporte/
+      websocket.ts   # Transporte: canal WebSocket con la extensión
+    logica/
+      room-manager.ts  # Lógica: registro de agentes y presencia
   tsconfig.json
 shared/
   types.ts           # Tipos y protocolo compartidos
@@ -49,9 +54,8 @@ extension/
   options/           # Página de opciones
   vite.config.ts     # Build de páginas y service worker
   vite.content.config.ts  # Build del content script (IIFE)
-scripts/
-  test-client.mjs    # Cliente de consola para pruebas
 docs/
+  arquitectura.md    # Capas, reglas y orden de trabajo
   protocolo.md       # Descripción del protocolo WebSocket
   decisiones.md      # Decisiones técnicas
 ```
@@ -65,15 +69,11 @@ docs/
    npm run server
    ```
 
-2. En otra terminal, simular uno o varios agentes:
+2. Cargar la extensión en Chrome (ver abajo) y abrir WhatsApp Web con un
+   agente en cada navegador.
 
-   ```bash
-   node scripts/test-client.mjs Ana attending "Cliente SUSPIROS"
-   node scripts/test-client.mjs Luis available
-   ```
-
-3. Observar cómo se actualiza la presencia. Al cerrar un cliente se marca como
-   `Desconectado`; al volver a conectarlo con el mismo nombre recupera su perfil.
+3. Observar cómo se actualiza la presencia. Al cerrar WhatsApp Web el agente se
+   marca como `Desconectado`; al volver con el mismo nombre recupera su perfil.
 
 ## Extensión en Chrome
 
