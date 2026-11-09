@@ -21,8 +21,8 @@ import {
   DuplicateAlertMessage,
   ServerToClientMessage,
   normalizeContact
-} from '../../shared/types.js'
-import { APP_VERSION } from '../../shared/version.js'
+} from '../../../shared/types.js'
+import { APP_VERSION } from '../../../shared/version.js'
 
 // Tiempo sin señal tras el cual un agente se considera desconectado (RN-04).
 const HEARTBEAT_TIMEOUT_MS = 60000
