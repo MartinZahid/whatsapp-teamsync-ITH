@@ -86,6 +86,12 @@ CREATE TABLE event_participants (
     UNIQUE (event_ref, agent_ref)
 );
 
+   -- Datos fijos del catálogo (ids 1 a 4)
+   INSERT INTO status (id, code, label, description) VALUES
+    (1, 'attending', 'Atendiendo',   'RN-01: conversación activa identificada y comunicación válida'),
+    (2, 'available', 'Disponible',   'RN-02: sin conversación activa identificada'),
+    (3, 'paused',    'Pausado',      'RN-03: pausa manual del agente'),
+    (4, 'offline',   'Desconectado', 'RN-04: pérdida de comunicación detectada por heartbeat');
 CREATE INDEX idx_sessions_agent       ON sessions(agent_ref);
 CREATE INDEX idx_sessions_contact     ON sessions(contact_ref);
 CREATE INDEX idx_sessions_started     ON sessions(started_at);
