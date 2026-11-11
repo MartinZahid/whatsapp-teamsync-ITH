@@ -8,9 +8,9 @@ import { registrarContacto } from './contactos.js'
 
 test('la base nueva trae las 8 tablas y los 4 estados', async () => {
   const base = await BaseDeDatos.abrir(null)
-  const tablas = base.db.exec("SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite%'")
-  assert.equal(tablas[0].values[0][0], 8)
-  const estados = base.db.exec('SELECT code FROM status ORDER BY id')[0].values.flat()
+  const tablas = base.una("SELECT count(*) AS n FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite%'")
+  assert.equal(tablas?.n, 8)
+  const estados = base.todas('SELECT code FROM status ORDER BY id').map((fila) => fila.code)
   assert.deepEqual(estados, ['attending', 'available', 'paused', 'offline'])
 })
 
@@ -28,7 +28,7 @@ test('la baja es lógica: el agente deja de listarse pero la fila sigue', async 
   const a = buscarOCrearAgente(base, 'Luis', 'Luis-1')
   darDeBajaAgente(base, a.id)
   assert.equal(listarAgentesActivos(base).length, 0)
-  assert.equal(base.db.exec('SELECT count(*) FROM agents')[0].values[0][0], 1)
+  assert.equal(base.una('SELECT count(*) AS n FROM agents')?.n, 1)
 })
 
 test('el contacto se normaliza: mismo chat escrito distinto = mismo contacto', async () => {
@@ -36,6 +36,5 @@ test('el contacto se normaliza: mismo chat escrito distinto = mismo contacto', a
   const id1 = registrarContacto(base, 'Juan  Pérez ')
   const id2 = registrarContacto(base, 'juan pérez')
   assert.equal(id1, id2)
-  const fila = base.db.exec('SELECT wa_id, name FROM contacts')[0].values[0]
-  assert.deepEqual(fila, ['juan pérez', 'juan pérez'])
+  assert.deepEqual(base.todas('SELECT wa_id, name FROM contacts'), [{ wa_id: 'juan pérez', name: 'juan pérez' }])
 })

@@ -8,30 +8,19 @@
 
 import { normalizeContact } from '../../../shared/types.js'
 import type { BaseDeDatos } from './conexion.js'
-import { ultimoId } from './agentes.js'
 import { ahora } from './tiempo.js'
 
 // Devuelve el id del contacto; lo crea si es nuevo o actualiza `last_seen`.
 export function registrarContacto(base: BaseDeDatos, nombreVisto: string): number {
   const waId = normalizeContact(nombreVisto)
-  const nombre = nombreVisto.trim()
   const t = ahora()
 
-  const consulta = base.db.prepare('SELECT id FROM contacts WHERE wa_id = ?')
-  consulta.bind([waId])
-  const id = consulta.step() ? (consulta.get()[0] as number) : null
-  consulta.free()
-
-  if (id !== null) {
-    base.db.run('UPDATE contacts SET name = ?, last_seen = ? WHERE id = ?', [nombre, t, id])
-    base.marcarCambio()
-    return id
-  }
-
-  base.db.run(
-    'INSERT INTO contacts (wa_id, name, first_seen, last_seen, active) VALUES (?, ?, ?, ?, 1)',
-    [waId, nombre, t, t]
+  // Un solo SQL para los dos casos: si el `wa_id` ya existe (ON CONFLICT),
+  // en vez de insertar actualiza el nombre y la última vez que se vio.
+  base.ejecutar(
+    `INSERT INTO contacts (wa_id, name, first_seen, last_seen, active) VALUES (?, ?, ?, ?, 1)
+     ON CONFLICT(wa_id) DO UPDATE SET name = excluded.name, last_seen = excluded.last_seen`,
+    [waId, nombreVisto.trim(), t, t]
   )
-  base.marcarCambio()
-  return ultimoId(base)
+  return base.una('SELECT id FROM contacts WHERE wa_id = ?', [waId])!.id as number
 }

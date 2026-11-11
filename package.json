@@ -4,7 +4,7 @@
   "description": "Servidor WebSocket de presencia en tiempo real para equipos de atención al cliente en WhatsApp Web",
   "type": "module",
   "scripts": {
-    "build:server": "tsc -p server/tsconfig.json && node -e \"require('fs').copyFileSync('server/src/datos/esquema.sql','server/dist/server/src/datos/esquema.sql')\"",
+    "build:server": "tsc -p server/tsconfig.json",
     "server": "node server/dist/server/src/server.js",
     "dev:server": "tsc -p server/tsconfig.json --watch",
     "build:extension": "vite build -c extension/vite.config.ts && vite build -c extension/vite.content.config.ts",

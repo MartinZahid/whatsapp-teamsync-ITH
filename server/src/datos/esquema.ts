@@ -1,3 +1,10 @@
+// CAPA 3 · DATOS — esquema de la base (las 8 tablas y el catálogo de estados).
+//
+// Es SQL guardado como texto dentro de TypeScript: así se compila junto con
+// el resto del servidor y no hay que copiar ningún archivo aparte a dist/.
+// conexion.ts lo ejecuta UNA sola vez, cuando la base es nueva.
+
+export const ESQUEMA = `
 -- =====================================================================
 -- WhatsApp Team Sync - Esquema de base de datos (SQLite / sql.js)
 -- 8 tablas: users, status, agents, contacts, agent_status, sessions,
@@ -101,3 +108,5 @@ CREATE INDEX idx_events_created       ON events(created_at);
 CREATE INDEX idx_participants_event   ON event_participants(event_ref);
 CREATE INDEX idx_participants_agent   ON event_participants(agent_ref);
 
+
+`
