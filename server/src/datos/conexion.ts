@@ -3,39 +3,31 @@
 // GUÍA DE LECTURA — qué hace este archivo:
 //   sql.js es SQLite compilado a WebAssembly: la base vive EN MEMORIA.
 //   Por eso este archivo se encarga de:
-//     1. Cargar el archivo .db al arrancar (o crearlo con esquema.ts).
+//     1. Cargar el archivo .db al arrancar (o crearlo con esquema.sql).
 //     2. Guardar la memoria al disco cada pocos segundos si hubo cambios.
 //     3. Guardar una última vez al cerrar el servidor.
 //   El guardado es ATÓMICO: se escribe un archivo temporal y luego se
 //   renombra, para que un corte a la mitad no deje el .db dañado.
-//
-//   Los repos (agentes.ts, contactos.ts, ...) NO usan sql.js directamente:
-//   usan los tres métodos de abajo, y así ninguno olvida avisar del cambio.
-//     · ejecutar(sql, params) -> escribe (INSERT / UPDATE) y devuelve el id nuevo
-//     · una(sql, params)      -> lee UNA fila (o null si no hay)
-//     · todas(sql, params)    -> lee TODAS las filas
-//   `?` en el SQL = parámetro: sql.js lo rellena con el valor del arreglo, así
-//   el texto del usuario nunca se mezcla con el SQL (evita inyección SQL).
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import initSqlJs, { type Database, type SqlValue } from 'sql.js'
-import { ESQUEMA } from './esquema.js'
-
-// Una fila leída de la base: { nombre_de_columna: valor }.
-export type Fila = Record<string, SqlValue>
 
 // Versión del esquema guardada en PRAGMA user_version (1 = las 8 tablas).
 // Si el esquema cambia, se sube este número y se agrega una migración.
 const VERSION_ESQUEMA = 1
 const INTERVALO_GUARDADO_MS = 2000
 
+// esquema.sql se copia junto a este archivo al compilar (ver build:server).
+const RUTA_ESQUEMA = join(dirname(fileURLToPath(import.meta.url)), 'esquema.sql')
+
 export class BaseDeDatos {
   private sucia = false
   private temporizador: NodeJS.Timeout | null = null
 
   private constructor(
-    private readonly db: Database,
+    readonly db: Database,
     private readonly ruta: string | null
   ) {}
 
@@ -57,39 +49,14 @@ export class BaseDeDatos {
 
   // Crea las tablas si la base es nueva; si ya tiene versión, la respeta.
   private prepararEsquema(): void {
-    const version = this.una('PRAGMA user_version')!.user_version as number
+    const version = this.db.exec('PRAGMA user_version;')[0].values[0][0] as number
     if (version === 0) {
-      this.db.exec(ESQUEMA)
+      this.db.exec(readFileSync(RUTA_ESQUEMA, 'utf8'))
       this.db.exec(`PRAGMA user_version = ${VERSION_ESQUEMA};`)
-      this.sucia = true
+      this.marcarCambio()
     } else if (version > VERSION_ESQUEMA) {
       throw new Error(`La base tiene la versión ${version}; este servidor solo conoce hasta la ${VERSION_ESQUEMA}`)
     }
-  }
-
-  // Escribe en la base (INSERT, UPDATE) y devuelve el id que SQLite asignó
-  // a la fila nueva. Anota que hay cambios pendientes de guardar en disco.
-  ejecutar(sql: string, params: SqlValue[] = []): number {
-    this.db.run(sql, params)
-    this.sucia = true
-    return this.una('SELECT last_insert_rowid() AS id')!.id as number
-  }
-
-  // Lee todas las filas de una consulta.
-  todas(sql: string, params: SqlValue[] = []): Fila[] {
-    const consulta = this.db.prepare(sql, params)
-    const filas: Fila[] = []
-    try {
-      while (consulta.step()) filas.push(consulta.getAsObject())
-    } finally {
-      consulta.free() // libera la memoria de la consulta aunque haya fallado
-    }
-    return filas
-  }
-
-  // Lee solo la primera fila; null si la consulta no devolvió nada.
-  una(sql: string, params: SqlValue[] = []): Fila | null {
-    return this.todas(sql, params)[0] ?? null
   }
 
   // Ejecuta varias escrituras como una sola unidad: o se guardan todas o ninguna.
@@ -98,11 +65,46 @@ export class BaseDeDatos {
     try {
       const resultado = trabajo()
       this.db.exec('COMMIT;')
+      this.marcarCambio()
       return resultado
     } catch (err) {
       this.db.exec('ROLLBACK;')
       throw err
     }
+  }
+
+  // --- Los 3 métodos con los que el resto de la capa de datos habla con SQL ---
+  // `?` en el SQL = parámetro; sql.js lo rellena con `parametros` en orden.
+  // Así el texto del usuario nunca se mezcla con el SQL (evita inyección SQL).
+
+  // INSERT / UPDATE / DELETE. Devuelve el id generado (útil tras un INSERT).
+  ejecutar(sql: string, parametros: SqlValue[] = []): { ultimoId: number } {
+    this.db.run(sql, parametros)
+    this.marcarCambio()
+    const ultimoId = this.db.exec('SELECT last_insert_rowid()')[0].values[0][0] as number
+    return { ultimoId }
+  }
+
+  // SELECT que devuelve TODAS las filas como objetos { columna: valor }.
+  todas<T = Record<string, SqlValue>>(sql: string, parametros: SqlValue[] = []): T[] {
+    const consulta = this.db.prepare(sql)
+    try {
+      consulta.bind(parametros)
+      const filas: T[] = []
+      while (consulta.step()) filas.push(consulta.getAsObject() as T)
+      return filas
+    } finally {
+      consulta.free() // libera la memoria de la consulta aunque haya error
+    }
+  }
+
+  // SELECT de UNA fila (la primera) o null si no hay.
+  una<T = Record<string, SqlValue>>(sql: string, parametros: SqlValue[] = []): T | null {
+    return this.todas<T>(sql, parametros)[0] ?? null
+  }
+
+  marcarCambio(): void {
+    this.sucia = true
   }
 
   // Escribe la base al disco solo si hubo cambios desde el último guardado.

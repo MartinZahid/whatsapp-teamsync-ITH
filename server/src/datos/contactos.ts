@@ -13,14 +13,18 @@ import { ahora } from './tiempo.js'
 // Devuelve el id del contacto; lo crea si es nuevo o actualiza `last_seen`.
 export function registrarContacto(base: BaseDeDatos, nombreVisto: string): number {
   const waId = normalizeContact(nombreVisto)
+  const nombre = nombreVisto.trim()
   const t = ahora()
 
-  // Un solo SQL para los dos casos: si el `wa_id` ya existe (ON CONFLICT),
-  // en vez de insertar actualiza el nombre y la última vez que se vio.
-  base.ejecutar(
-    `INSERT INTO contacts (wa_id, name, first_seen, last_seen, active) VALUES (?, ?, ?, ?, 1)
-     ON CONFLICT(wa_id) DO UPDATE SET name = excluded.name, last_seen = excluded.last_seen`,
-    [waId, nombreVisto.trim(), t, t]
+  const existente = base.una<{ id: number }>('SELECT id FROM contacts WHERE wa_id = ?', [waId])
+  if (existente) {
+    base.ejecutar('UPDATE contacts SET name = ?, last_seen = ? WHERE id = ?', [nombre, t, existente.id])
+    return existente.id
+  }
+
+  const { ultimoId } = base.ejecutar(
+    'INSERT INTO contacts (wa_id, name, first_seen, last_seen, active) VALUES (?, ?, ?, ?, 1)',
+    [waId, nombre, t, t]
   )
-  return base.una('SELECT id FROM contacts WHERE wa_id = ?', [waId])!.id as number
+  return ultimoId
 }

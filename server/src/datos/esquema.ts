@@ -7,8 +7,6 @@
 export const ESQUEMA = `
 -- =====================================================================
 -- WhatsApp Team Sync - Esquema de base de datos (SQLite / sql.js)
--- 8 tablas: users, status, agents, contacts, agent_status, sessions,
---           events, event_participants
 -- Todas las llaves son numéricas (INTEGER). Fechas: Unix epoch en segundos (UTC)
 -- =====================================================================
 PRAGMA foreign_keys = ON;

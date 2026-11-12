@@ -23,6 +23,7 @@ import {
   normalizeContact
 } from '../../../shared/types.js'
 import { APP_VERSION } from '../../../shared/version.js'
+import { BitacoraNula, type Bitacora } from '../datos/bitacora.js'
 
 // Tiempo sin señal tras el cual un agente se considera desconectado (RN-04).
 const HEARTBEAT_TIMEOUT_MS = 60000
@@ -35,6 +36,9 @@ export class RoomManager {
   private agents = new Map<string, Agent>()
   // Conexión WebSocket de cada agente, indexada por su id interno.
   private connections = new Map<string, WebSocket>()
+
+  // La bitácora se recibe desde fuera (server.ts). Si no se da, no se guarda nada.
+  constructor(private readonly bitacora: Bitacora = new BitacoraNula()) {}
 
   // Registra una conexión y devuelve el id del agente. Si ya existe un agente
   // con el mismo nombre, reutiliza su registro (reconexión) para que conserve
@@ -58,12 +62,13 @@ export class RoomManager {
       this.connections.set(existing.id, ws)
       existing.lastSeen = Date.now()
       console.log(`[Servidor] Agente reconectado: ${name}`)
+      this.bitacora.agenteConectado(existing)
       return existing.id
     }
 
     const id = `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     this.connections.set(id, ws)
-    this.agents.set(id, {
+    const agent: Agent = {
       id,
       name,
       status: 'available',
@@ -71,25 +76,30 @@ export class RoomManager {
       lastSeen: Date.now(),
       requesting: false,
       attendingSince: null
-    })
+    }
+    this.agents.set(id, agent)
     console.log(`[Servidor] Agente registrado: ${name}`)
+    this.bitacora.agenteConectado(agent)
     return id
   }
 
   // Cambia el estado de un agente y lleva el cronómetro de atención
   // (`attendingSince`): arranca al empezar a atender un chat y se limpia al salir.
-  private setStatus(agent: Agent, status: AgentStatus, contact: string | null = null): void {
+  private setStatus(agent: Agent, status: AgentStatus, contact: string | null = null, reason?: string): void {
+    const before = agent.status
+    const contactBefore = agent.contact
     const sameChat = agent.status === 'attending' && status === 'attending' && agent.contact === contact
     agent.status = status
     agent.contact = contact
     if (status !== 'attending') agent.attendingSince = null
     else if (!sameChat || agent.attendingSince === null) agent.attendingSince = Date.now()
+    this.bitacora.cambioDeEstado(agent, before, contactBefore, reason)
   }
 
   // Pasa a Desconectado. Una ayuda pendiente no sobrevive a una desconexión.
-  // (Aquí se registrará el evento `disconnected` en la bitácora.)
+  // La bitácora registra `disconnected` con el motivo.
   private goOffline(agent: Agent, reason: string): void {
-    this.setStatus(agent, 'offline')
+    this.setStatus(agent, 'offline', null, reason)
     agent.requesting = false
     console.log(`[Servidor] ${agent.name} desconectado (${reason})`)
   }
@@ -129,12 +139,14 @@ export class RoomManager {
         break
       case 'HELP_REQUEST':
         // Solicita o cancela ayuda SIN tocar el estado.
+        if (agent.requesting !== message.requesting) this.bitacora.ayuda(agent, message.requesting)
         agent.requesting = message.requesting
         console.log(
           `[Servidor] ${agent.name} ${message.requesting ? 'solicita ayuda' : 'cancela la solicitud de ayuda'}`
         )
         break
       case 'DELETE_AGENT':
+        this.bitacora.bajaAgente(agent)
         this.agents.delete(agentId)
         this.connections.delete(agentId)
         console.log(`[Servidor] Agente eliminado: ${agent.name}`)
@@ -171,6 +183,7 @@ export class RoomManager {
     console.log(
       `[Servidor] Atención duplicada en "${agent.contact}": ${alert.agents.map((a) => a.name).join(', ')}`
     )
+    this.bitacora.duplicidad([agent, ...others])
     this.sendToAll(alert)
   }
 

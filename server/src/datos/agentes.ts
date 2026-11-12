@@ -2,9 +2,9 @@
 //
 // GUÍA DE LECTURA:
 //   Solo SQL sobre la tabla de agentes. No sabe nada de WebSocket ni de estados.
-//   Usa los métodos de conexion.ts: ejecutar (escribe), una y todas (leen).
+//   Usa base.ejecutar / base.una / base.todas (ver conexion.ts).
 
-import type { BaseDeDatos, Fila } from './conexion.js'
+import type { BaseDeDatos } from './conexion.js'
 import { ahora } from './tiempo.js'
 
 export interface FilaAgente {
@@ -13,12 +13,8 @@ export interface FilaAgente {
   name: string
 }
 
-const COLUMNAS = 'id, agent_id, name'
-
-// Convierte una fila de la base (columnas en snake_case) en un FilaAgente.
-function aAgente(fila: Fila): FilaAgente {
-  return { id: fila.id as number, agentId: fila.agent_id as string, name: fila.name as string }
-}
+// Columnas renombradas a como se usan en TypeScript.
+const COLUMNAS = 'id, agent_id AS agentId, name'
 
 // Busca un agente ACTIVO por nombre; si no existe lo da de alta.
 // (Alta automática provisional: ver ADR-001; luego se hará desde el dashboard.)
@@ -26,22 +22,20 @@ export function buscarOCrearAgente(base: BaseDeDatos, nombre: string, agentId: s
   const existente = buscarAgentePorNombre(base, nombre)
   if (existente) return existente
 
-  const id = base.ejecutar('INSERT INTO agents (agent_id, name, active, created_at) VALUES (?, ?, 1, ?)', [
-    agentId,
-    nombre,
-    ahora()
-  ])
-  return { id, agentId, name: nombre }
+  const { ultimoId } = base.ejecutar(
+    'INSERT INTO agents (agent_id, name, active, created_at) VALUES (?, ?, 1, ?)',
+    [agentId, nombre, ahora()]
+  )
+  return { id: ultimoId, agentId, name: nombre }
 }
 
 export function buscarAgentePorNombre(base: BaseDeDatos, nombre: string): FilaAgente | null {
-  const fila = base.una(`SELECT ${COLUMNAS} FROM agents WHERE name = ? AND active = 1`, [nombre])
-  return fila ? aAgente(fila) : null
+  return base.una<FilaAgente>(`SELECT ${COLUMNAS} FROM agents WHERE name = ? AND active = 1`, [nombre])
 }
 
 // Todos los agentes activos (para cargarlos en memoria al arrancar).
 export function listarAgentesActivos(base: BaseDeDatos): FilaAgente[] {
-  return base.todas(`SELECT ${COLUMNAS} FROM agents WHERE active = 1 ORDER BY id`).map(aAgente)
+  return base.todas<FilaAgente>(`SELECT ${COLUMNAS} FROM agents WHERE active = 1 ORDER BY id`)
 }
 
 // Baja LÓGICA: no se borra la fila para no romper sesiones y eventos viejos.
