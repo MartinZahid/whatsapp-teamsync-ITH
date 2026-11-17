@@ -7,7 +7,15 @@
 
 import type { Agent, AgentStatus } from '../../../shared/types.js'
 
+// Un agente dado de alta en la base (lo mínimo que necesita la lógica).
+export interface AgenteRegistrado {
+  agentId: string
+  name: string
+}
+
 export interface Bitacora {
+  // Agentes dados de alta. null = sin base: se acepta cualquier nombre.
+  agentesRegistrados(): AgenteRegistrado[] | null
   // El agente se identificó (primer mensaje o reconexión).
   agenteConectado(agente: Agent): void
   // Se llama DESPUÉS de cambiar el estado, con el estado y chat que tenía antes.
@@ -21,6 +29,9 @@ export interface Bitacora {
 }
 
 export class BitacoraNula implements Bitacora {
+  agentesRegistrados(): null {
+    return null
+  }
   agenteConectado(): void {}
   cambioDeEstado(): void {}
   ayuda(): void {}

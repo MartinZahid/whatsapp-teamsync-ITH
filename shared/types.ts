@@ -58,7 +58,7 @@ export interface DuplicateAlertMessage {
 //   PARSE_ERROR   el texto recibido no es JSON válido
 //   AUTH_REQUIRED el primer mensaje no traía el nombre del agente
 //   REPLACED      el mismo agente se conectó desde otro navegador
-export type ErrorCode = 'PARSE_ERROR' | 'AUTH_REQUIRED' | 'REPLACED'
+export type ErrorCode = 'PARSE_ERROR' | 'AUTH_REQUIRED' | 'REPLACED' | 'UNKNOWN_AGENT'
 
 export type ServerToClientMessage =
   | { type: 'WELCOME'; message: string; protocol: string }

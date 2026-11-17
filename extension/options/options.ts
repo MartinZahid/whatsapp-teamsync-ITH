@@ -1,13 +1,11 @@
 import { testConnection } from '../src/lib/test-connection'
+import { fetchAgentNames } from '../src/lib/agents-api'
 import {
-  DEFAULT_AGENTS,
   DEFAULT_SELECTOR,
   DEFAULT_SERVER_URL,
-  getAgentsList,
   getConfig,
   getConnection,
   getSelectors,
-  saveAgentsList,
   saveConfig,
   saveSelectors,
   saveStatus,
@@ -22,7 +20,6 @@ const versionEl = document.getElementById('version') as HTMLElement
 const serverState = document.getElementById('server-state') as HTMLElement
 const agentName = document.getElementById('agent-name') as HTMLElement
 const agentList = document.getElementById('agent-list') as HTMLUListElement
-const addAgentButton = document.getElementById('add-agent') as HTMLButtonElement
 const selectorInput = document.getElementById('selector') as HTMLInputElement
 const saveButton = document.getElementById('save') as HTMLButtonElement
 const saveResult = document.getElementById('save-result') as HTMLSpanElement
@@ -32,36 +29,24 @@ function send(message: UiRequest): void {
   chrome.runtime.sendMessage(message, () => void chrome.runtime.lastError)
 }
 
-function addAgentRow(value = ''): void {
-  const item = document.createElement('li')
-
-  const input = document.createElement('input')
-  input.type = 'text'
-  input.value = value
-  input.placeholder = 'Nombre del agente'
-
-  const remove = document.createElement('button')
-  remove.type = 'button'
-  remove.className = 'remove'
-  remove.textContent = 'Quitar'
-  remove.addEventListener('click', () => item.remove())
-
-  item.append(input, remove)
-  agentList.append(item)
-}
-
-function renderAgents(names: string[]): void {
+// Lista de SOLO LECTURA: los agentes vienen de la base del servidor.
+// El alta y la baja se hacen con `npm run agentes` (luego, desde el dashboard).
+async function renderAgents(serverUrl: string): Promise<void> {
+  const { names, fromServer } = await fetchAgentNames(serverUrl)
   agentList.replaceChildren()
-  for (const name of names) addAgentRow(name)
-}
-
-function readAgents(): string[] {
-  const names = Array.from(agentList.querySelectorAll('input'))
-    .map((input) => input.value.trim())
-    .filter((name) => name.length > 0)
-
-  const unique = Array.from(new Set(names))
-  return unique.length > 0 ? unique : DEFAULT_AGENTS
+  for (const name of names) {
+    const item = document.createElement('li')
+    item.textContent = name
+    agentList.append(item)
+  }
+  if (names.length === 0 || !fromServer) {
+    const note = document.createElement('li')
+    note.className = 'hint'
+    note.textContent = fromServer
+      ? 'No hay agentes dados de alta en el servidor.'
+      : 'No se pudo leer la lista del servidor; se muestra la última guardada.'
+    agentList.append(note)
+  }
 }
 
 // Refleja en la tarjeta "Información del sistema" el estado de la conexión.
@@ -72,9 +57,8 @@ function renderConnection(status: ConnectionState['status']): void {
 }
 
 async function init(): Promise<void> {
-  const [config, agents, selectors, connection] = await Promise.all([
+  const [config, selectors, connection] = await Promise.all([
     getConfig(),
-    getAgentsList(),
     getSelectors(),
     getConnection()
   ])
@@ -82,7 +66,7 @@ async function init(): Promise<void> {
   urlInput.value = config.serverUrl
   selectorInput.value = selectors.chatTitle
   agentName.textContent = config.name || '—'
-  renderAgents(agents)
+  void renderAgents(config.serverUrl)
   renderConnection(connection.status)
 
   try {
@@ -104,26 +88,22 @@ testButton.addEventListener('click', async () => {
   testResult.style.color = ok ? '#16a34a' : '#dc2626'
 })
 
-addAgentButton.addEventListener('click', () => addAgentRow())
-
 saveButton.addEventListener('click', async () => {
   const config = await getConfig()
   const nextConfig = {
     ...config,
     serverUrl: urlInput.value.trim() || DEFAULT_SERVER_URL
   }
-  const agents = readAgents()
   const selectors = { chatTitle: selectorInput.value.trim() || DEFAULT_SELECTOR }
 
   await Promise.all([
     saveConfig(nextConfig),
-    saveAgentsList(agents),
     saveSelectors(selectors)
   ])
 
   // El service worker se encarga de reconectar si cambió la URL.
   send({ type: 'SET_CONFIG', config: nextConfig })
-  renderAgents(agents)
+  void renderAgents(nextConfig.serverUrl)
   agentName.textContent = nextConfig.name || '—'
 
   saveResult.textContent = '✓ Cambios guardados.'
@@ -138,7 +118,6 @@ resetButton.addEventListener('click', async () => {
 
   await Promise.all([
     saveConfig(defaults),
-    saveAgentsList(DEFAULT_AGENTS),
     saveSelectors({ chatTitle: DEFAULT_SELECTOR }),
     saveStatus('available')
   ])
@@ -146,7 +125,7 @@ resetButton.addEventListener('click', async () => {
   send({ type: 'SET_CONFIG', config: defaults })
   urlInput.value = DEFAULT_SERVER_URL
   selectorInput.value = DEFAULT_SELECTOR
-  renderAgents(DEFAULT_AGENTS)
+  void renderAgents(DEFAULT_SERVER_URL)
   agentName.textContent = '—'
 
   saveResult.textContent = '✓ Configuración restablecida.'

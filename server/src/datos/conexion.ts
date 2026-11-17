@@ -3,7 +3,7 @@
 // GUÍA DE LECTURA — qué hace este archivo:
 //   sql.js es SQLite compilado a WebAssembly: la base vive EN MEMORIA.
 //   Por eso este archivo se encarga de:
-//     1. Cargar el archivo .db al arrancar (o crearlo con esquema.sql).
+//     1. Cargar el archivo .db al arrancar (o crearlo con esquema.ts).
 //     2. Guardar la memoria al disco cada pocos segundos si hubo cambios.
 //     3. Guardar una última vez al cerrar el servidor.
 //   El guardado es ATÓMICO: se escribe un archivo temporal y luego se

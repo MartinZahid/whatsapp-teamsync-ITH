@@ -13,7 +13,6 @@ export const KEYS = {
 } as const
 
 export const DEFAULT_SERVER_URL = 'ws://localhost:3001'
-export const DEFAULT_AGENTS = ['Ana Torres', 'Luis Ramírez', 'Pedro Sánchez', 'María Gómez']
 // Encabezado de la conversación abierta en WhatsApp Web (nombre del contacto).
 export const DEFAULT_SELECTOR =
   'div[data-testid="conversation-panel-wrapper"] header span[data-testid="conversation-info-header-chat-title"]'
@@ -55,8 +54,9 @@ export function saveConfig(config: AgentConfig): Promise<void> {
   return write(KEYS.config, config)
 }
 
+// Última lista de agentes recibida del servidor (caché para cuando no responde).
 export async function getAgentsList(): Promise<string[]> {
-  return (await read<string[]>(KEYS.agents)) ?? DEFAULT_AGENTS
+  return (await read<string[]>(KEYS.agents)) ?? []
 }
 
 export function saveAgentsList(agents: string[]): Promise<void> {

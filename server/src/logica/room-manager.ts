@@ -38,14 +38,39 @@ export class RoomManager {
   private connections = new Map<string, WebSocket>()
 
   // La bitácora se recibe desde fuera (server.ts). Si no se da, no se guarda nada.
-  constructor(private readonly bitacora: Bitacora = new BitacoraNula()) {}
+  // Si hay base, solo pueden conectarse los agentes dados de alta en ella.
+  private readonly restringido: boolean
+
+  constructor(private readonly bitacora: Bitacora = new BitacoraNula()) {
+    // Al arrancar se cargan los agentes de la base como Desconectados, así la
+    // lista de presencia muestra a TODO el equipo aunque nadie se haya conectado.
+    const registrados = bitacora.agentesRegistrados()
+    this.restringido = registrados !== null
+    for (const { agentId, name } of registrados ?? []) {
+      this.agents.set(agentId, {
+        id: agentId,
+        name,
+        status: 'offline',
+        contact: null,
+        lastSeen: 0,
+        requesting: false,
+        attendingSince: null
+      })
+    }
+    if (registrados) console.log(`[Servidor] ${registrados.length} agentes cargados de la base`)
+  }
 
   // Registra una conexión y devuelve el id del agente. Si ya existe un agente
   // con el mismo nombre, reutiliza su registro (reconexión) para que conserve
   // su identidad. No difunde nada: el mensaje que identificó al agente se
   // procesa justo después con handleMessage() y ese ya difunde el estado real.
-  register(ws: WebSocket, name: string): string {
+  // Devuelve null si hay base y el nombre no está dado de alta.
+  register(ws: WebSocket, name: string): string | null {
     const existing = this.getAllAgents().find((a) => a.name === name)
+    if (!existing && this.restringido) {
+      console.log(`[Servidor] Rechazado: "${name}" no está dado de alta`)
+      return null
+    }
 
     if (existing) {
       const previous = this.connections.get(existing.id)
@@ -61,7 +86,7 @@ export class RoomManager {
       }
       this.connections.set(existing.id, ws)
       existing.lastSeen = Date.now()
-      console.log(`[Servidor] Agente reconectado: ${name}`)
+      console.log(`[Servidor] Agente conectado: ${name}`)
       this.bitacora.agenteConectado(existing)
       return existing.id
     }

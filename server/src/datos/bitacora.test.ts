@@ -6,8 +6,15 @@ import type { WebSocket } from 'ws'
 import { BaseDeDatos } from './conexion.js'
 import { BitacoraSqlite } from './bitacorasqlite.js'
 import { RoomManager } from '../logica/room-manager.js'
+import { buscarOCrearAgente } from './agentes.js'
 
 const conexionFalsa = () => ({ readyState: 1, send() {}, close() {} }) as unknown as WebSocket
+
+// Da de alta a los agentes en la base y crea la sala (que los carga al arrancar).
+function salaCon(base: BaseDeDatos, ...nombres: string[]): RoomManager {
+  for (const nombre of nombres) buscarOCrearAgente(base, nombre)
+  return new RoomManager(new BitacoraSqlite(base))
+}
 
 function filas(base: BaseDeDatos, sql: string): unknown[][] {
   const r = base.db.exec(sql)
@@ -16,11 +23,11 @@ function filas(base: BaseDeDatos, sql: string): unknown[][] {
 
 test('un turno completo deja la bitácora y las sesiones correctas', async () => {
   const base = await BaseDeDatos.abrir(null)
-  const sala = new RoomManager(new BitacoraSqlite(base))
+  const sala = salaCon(base, 'Ana', 'Luis')
   const ws = conexionFalsa()
 
-  const id = sala.register(ws, 'Ana')
-  sala.handleMessage(id, { type: 'AVAILABLE', agent: 'Ana' })        // ya estaba disponible: no cuenta
+  const id = sala.register(ws, 'Ana')!
+  sala.handleMessage(id, { type: 'AVAILABLE', agent: 'Ana' })!        // ya estaba disponible: no cuenta
   sala.handleMessage(id, { type: 'ATTENDING', agent: 'Ana', contact: 'Juan Pérez' })
   sala.handleMessage(id, { type: 'HELP_REQUEST', agent: 'Ana', requesting: true })
   sala.handleMessage(id, { type: 'HELP_REQUEST', agent: 'Ana', requesting: false })
@@ -32,6 +39,7 @@ test('un turno completo deja la bitácora y las sesiones correctas', async () =>
   const tipos = filas(base, 'SELECT type, status_ref FROM events ORDER BY id')
   assert.deepEqual(tipos, [
     ['connected', null],
+    ['available', 2],
     ['chat_start', 1],
     ['help_request', null],
     ['help_cancel', null],
@@ -58,10 +66,10 @@ test('un turno completo deja la bitácora y las sesiones correctas', async () =>
 
 test('reconectar con el mismo nombre reutiliza el agente', async () => {
   const base = await BaseDeDatos.abrir(null)
-  const sala = new RoomManager(new BitacoraSqlite(base))
+  const sala = salaCon(base, 'Luis')
   const ws1 = conexionFalsa()
-  const id = sala.register(ws1, 'Luis')
-  sala.disconnect(id, ws1)
+  const id = sala.register(ws1, 'Luis')!
+  sala.disconnect(id, ws1)!
   sala.register(conexionFalsa(), 'Luis')
   assert.equal(filas(base, 'SELECT count(*) FROM agents')[0][0], 1)
   assert.equal(filas(base, `SELECT count(*) FROM events WHERE type = 'connected'`)[0][0], 2)
@@ -69,9 +77,9 @@ test('reconectar con el mismo nombre reutiliza el agente', async () => {
 
 test('duplicidad: un evento y una fila de participante por agente', async () => {
   const base = await BaseDeDatos.abrir(null)
-  const sala = new RoomManager(new BitacoraSqlite(base))
-  const ana = sala.register(conexionFalsa(), 'Ana')
-  const luis = sala.register(conexionFalsa(), 'Luis')
+  const sala = salaCon(base, 'Ana', 'Luis')
+  const ana = sala.register(conexionFalsa(), 'Ana')!
+  const luis = sala.register(conexionFalsa(), 'Luis')!
   sala.handleMessage(ana, { type: 'ATTENDING', agent: 'Ana', contact: 'Juan Pérez' })
   sala.handleMessage(luis, { type: 'ATTENDING', agent: 'Luis', contact: 'juan  pérez' }) // mismo chat
 
@@ -82,4 +90,18 @@ test('duplicidad: un evento y una fila de participante por agente', async () => 
   const participantes = filas(base, `
     SELECT a.name, p.session_ref FROM event_participants p JOIN agents a ON a.id = p.agent_ref ORDER BY p.id`)
   assert.deepEqual(participantes, [['Luis', 2], ['Ana', 1]])
+})
+test('solo se conectan los agentes dados de alta en la base', async () => {
+  const base = await BaseDeDatos.abrir(null)
+  const sala = salaCon(base, 'Ana')
+  assert.equal(sala.register(conexionFalsa(), 'Intruso'), null)
+  assert.ok(sala.register(conexionFalsa(), 'Ana'))
+  assert.equal(filas(base, 'SELECT count(*) FROM agents')[0][0], 1)
+})
+
+test('al arrancar, la presencia ya muestra a todo el equipo como Desconectado', async () => {
+  const base = await BaseDeDatos.abrir(null)
+  const sala = salaCon(base, 'Ana', 'Luis')
+  const presencia = sala.getAllAgents().map((a) => [a.name, a.status])
+  assert.deepEqual(presencia, [['Ana', 'offline'], ['Luis', 'offline']])
 })

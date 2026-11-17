@@ -16,9 +16,9 @@ export interface FilaAgente {
 // Columnas renombradas a como se usan en TypeScript.
 const COLUMNAS = 'id, agent_id AS agentId, name'
 
-// Busca un agente ACTIVO por nombre; si no existe lo da de alta.
-// (Alta automática provisional: ver ADR-001; luego se hará desde el dashboard.)
-export function buscarOCrearAgente(base: BaseDeDatos, nombre: string, agentId: string): FilaAgente {
+// Da de alta un agente (hoy desde `npm run agentes`; luego desde el dashboard).
+// Si ya existe uno activo con ese nombre, lo devuelve sin duplicarlo.
+export function buscarOCrearAgente(base: BaseDeDatos, nombre: string, agentId = idDeTexto(nombre)): FilaAgente {
   const existente = buscarAgentePorNombre(base, nombre)
   if (existente) return existente
 
@@ -36,6 +36,17 @@ export function buscarAgentePorNombre(base: BaseDeDatos, nombre: string): FilaAg
 // Todos los agentes activos (para cargarlos en memoria al arrancar).
 export function listarAgentesActivos(base: BaseDeDatos): FilaAgente[] {
   return base.todas<FilaAgente>(`SELECT ${COLUMNAS} FROM agents WHERE active = 1 ORDER BY id`)
+}
+
+// Id de texto legible: "Ana Torres" -> "ana-torres-k3f9".
+function idDeTexto(nombre: string): string {
+  const base = nombre
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // quita acentos
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  return `${base}-${Math.random().toString(36).slice(2, 6)}`
 }
 
 // Baja LÓGICA: no se borra la fila para no romper sesiones y eventos viejos.

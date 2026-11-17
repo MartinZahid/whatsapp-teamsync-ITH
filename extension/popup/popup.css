@@ -329,3 +329,10 @@ label {
 @media (prefers-reduced-motion: reduce) {
   .status-dot.connecting { animation: none; }
 }
+
+.agent-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+}

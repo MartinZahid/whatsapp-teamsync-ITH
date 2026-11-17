@@ -55,7 +55,13 @@ export function attachWebSocket(httpServer: Server, roomManager: RoomManager): W
           sendError(ws, 'AUTH_REQUIRED', 'El primer mensaje debe incluir el nombre del agente')
           return
         }
-        agentId = roomManager.register(ws, message.agent.trim())
+        const id = roomManager.register(ws, message.agent.trim())
+        if (!id) {
+          sendError(ws, 'UNKNOWN_AGENT', 'Este agente no está dado de alta')
+          ws.close()
+          return
+        }
+        agentId = id
         // Primero se aplica el estado que trae el mensaje y luego se manda el
         // estado inicial, para que el agente ya se vea con su estado real.
         roomManager.handleMessage(agentId, message)

@@ -18,9 +18,9 @@
 //   presencia en tiempo real sigue funcionando (la base nunca la detiene).
 
 import type { Agent, AgentStatus } from '../../../shared/types.js'
-import type { Bitacora } from './bitacora.js'
+import type { AgenteRegistrado, Bitacora } from './bitacora.js'
 import type { BaseDeDatos } from './conexion.js'
-import { buscarOCrearAgente, darDeBajaAgente } from './agentes.js'
+import { buscarAgentePorNombre, darDeBajaAgente, listarAgentesActivos } from './agentes.js'
 import { registrarContacto } from './contactos.js'
 import { ahora } from './tiempo.js'
 
@@ -38,9 +38,14 @@ export class BitacoraSqlite implements Bitacora {
 
   constructor(private readonly base: BaseDeDatos) {}
 
+  // Los agentes activos de la tabla `agents` (los únicos que pueden conectarse).
+  agentesRegistrados(): AgenteRegistrado[] {
+    return listarAgentesActivos(this.base).map(({ agentId, name }) => ({ agentId, name }))
+  }
+
   agenteConectado(agente: Agent): void {
     this.seguro('connected', () => {
-      const fila = buscarOCrearAgente(this.base, agente.name, agente.id)
+      const fila = this.agenteEnBase(agente)
       const previa = this.refs.get(agente.id)
       this.refs.set(agente.id, { agente: fila.id, sesion: previa?.sesion ?? null })
       this.evento(agente, 'connected', null, null)
@@ -129,11 +134,18 @@ export class BitacoraSqlite implements Bitacora {
     }
   }
 
+  // El agente TIENE que existir en la base (RoomManager ya lo validó).
+  private agenteEnBase(agente: Agent) {
+    const fila = buscarAgentePorNombre(this.base, agente.name)
+    if (!fila) throw new Error(`El agente "${agente.name}" no está dado de alta`)
+    return fila
+  }
+
   private referencias(agente: Agent): Referencias {
     let r = this.refs.get(agente.id)
     if (!r) {
       // Por si llega un cambio antes de agenteConectado (no debería pasar).
-      r = { agente: buscarOCrearAgente(this.base, agente.name, agente.id).id, sesion: null }
+      r = { agente: this.agenteEnBase(agente).id, sesion: null }
       this.refs.set(agente.id, r)
     }
     return r
