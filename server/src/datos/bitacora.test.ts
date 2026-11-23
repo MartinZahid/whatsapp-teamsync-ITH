@@ -105,3 +105,51 @@ test('al arrancar, la presencia ya muestra a todo el equipo como Desconectado', 
   const presencia = sala.getAllAgents().map((a) => [a.name, a.status])
   assert.deepEqual(presencia, [['Ana', 'offline'], ['Luis', 'offline']])
 })
+
+
+test('al apagar el servidor se cierran las sesiones abiertas', async () => {
+  const base = await BaseDeDatos.abrir(null)
+  const sala = salaCon(base, 'Ana')
+  const id = sala.register(conexionFalsa(), 'Ana')!
+  sala.handleMessage(id, { type: 'ATTENDING', agent: 'Ana', contact: 'Juan' })
+  sala.apagar()
+  assert.deepEqual(filas(base, 'SELECT status FROM sessions'), [['closed']])
+  assert.equal(filas(base, `SELECT detail FROM events WHERE type = 'disconnected'`)[0][0], 'servidor detenido')
+})
+
+test('si el servidor se cayó, al arrancar cierra lo que quedó abierto', async () => {
+  const base = await BaseDeDatos.abrir(null)
+  const sala = salaCon(base, 'Ana')
+  const id = sala.register(conexionFalsa(), 'Ana')!
+  sala.handleMessage(id, { type: 'ATTENDING', agent: 'Ana', contact: 'Juan' })
+  // "Caída": no se llama a apagar(). Se arranca otra sala sobre la misma base.
+  new RoomManager(new BitacoraSqlite(base))
+  assert.deepEqual(filas(base, 'SELECT status, duration_seconds IS NOT NULL FROM sessions'), [['closed', 1]])
+  assert.deepEqual(filas(base, 'SELECT status_ref, contact_ref FROM agent_status'), [[4, null]])
+})
+
+test('un agente dado de alta con el servidor corriendo puede conectarse', async () => {
+  const base = await BaseDeDatos.abrir(null)
+  const sala = salaCon(base, 'Ana')
+  buscarOCrearAgente(base, 'Nuevo') // como lo haría el dashboard
+  assert.ok(sala.register(conexionFalsa(), 'Nuevo'))
+})
+
+test('la baja la hace el servidor (dashboard), no la extensión', async () => {
+  const base = await BaseDeDatos.abrir(null)
+  const sala = salaCon(base, 'Ana')
+  const id = sala.register(conexionFalsa(), 'Ana')!
+  sala.handleMessage(id, { type: 'ATTENDING', agent: 'Ana', contact: 'Juan' })
+  assert.equal(sala.darDeBaja('Ana'), true)
+  assert.equal(filas(base, 'SELECT active FROM agents')[0][0], 0)
+  assert.deepEqual(filas(base, 'SELECT status FROM sessions'), [['closed']])
+  assert.equal(sala.getAllAgents().length, 0)
+})
+
+test('ATTENDING sin contacto se ignora', async () => {
+  const base = await BaseDeDatos.abrir(null)
+  const sala = salaCon(base, 'Ana')
+  const id = sala.register(conexionFalsa(), 'Ana')!
+  sala.handleMessage(id, { type: 'ATTENDING', agent: 'Ana' } as never)
+  assert.equal(filas(base, 'SELECT count(*) FROM sessions')[0][0], 0)
+})

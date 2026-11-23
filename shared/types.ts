@@ -39,7 +39,6 @@ export type ClientToServerMessage =
   | { type: 'AVAILABLE'; agent: string }
   | { type: 'PAUSED'; agent: string; reason?: string }
   | { type: 'OFFLINE'; agent: string }
-  | { type: 'DELETE_AGENT'; agent: string }
   | { type: 'HEARTBEAT'; agent: string }
   // Solicitud de ayuda (RN-03): no cambia el estado, es un aviso independiente.
   | { type: 'HELP_REQUEST'; agent: string; requesting: boolean }

@@ -109,13 +109,20 @@ export class BaseDeDatos {
   // Escribe la base al disco solo si hubo cambios desde el último guardado.
   guardar(): void {
     if (!this.ruta || !this.sucia) return
-    mkdirSync(dirname(this.ruta), { recursive: true })
-    const temporal = `${this.ruta}.tmp`
-    writeFileSync(temporal, this.db.export())
-    // export() reabre la base internamente y se pierden los PRAGMA de sesión.
-    this.db.exec('PRAGMA foreign_keys = ON;')
-    renameSync(temporal, this.ruta)
-    this.sucia = false
+    // Si el disco falla (lleno, sin permisos, archivo bloqueado) se avisa y se
+    // reintenta en el siguiente ciclo; el servidor NO debe caerse por esto.
+    try {
+      mkdirSync(dirname(this.ruta), { recursive: true })
+      const temporal = `${this.ruta}.tmp`
+      writeFileSync(temporal, this.db.export())
+      renameSync(temporal, this.ruta)
+      this.sucia = false
+    } catch (err) {
+      console.error('[Datos] No se pudo guardar la base en disco:', err)
+    } finally {
+      // export() reabre la base internamente y se pierden los PRAGMA de sesión.
+      this.db.exec('PRAGMA foreign_keys = ON;')
+    }
   }
 
   cerrar(): void {

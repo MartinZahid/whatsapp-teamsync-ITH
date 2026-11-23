@@ -51,7 +51,6 @@ async function init(): Promise<void> {
   desiredStatus = await getSavedStatus()
   currentContact = await getCurrentContact()
 
-
   ensureAlarm()
   if (config.name) connect()
 }
@@ -205,6 +204,11 @@ function resyncIfNeeded(): void {
   if (!config.name || socket?.readyState !== WebSocket.OPEN) return
   const self = agents.find((agent) => agent.name === config.name)
   if (self?.status !== effectiveStatus()) applyStatus()
+  // Al pasar a Desconectado el servidor borra la ayuda pendiente; si aquí
+  // sigue activa, se vuelve a pedir para que popup, panel y servidor coincidan.
+  if (self && self.requesting !== requesting) {
+    send({ type: 'HELP_REQUEST', agent: config.name, requesting })
+  }
 }
 
 function handleServerMessage(message: ServerToClientMessage): void {
@@ -248,7 +252,9 @@ function flashBadge(): void {
 async function applyStatusChange(status: AgentStatus): Promise<void> {
   // Al reanudar con un chat abierto, el agente vuelve a "Atendiendo" (RN-01).
   desiredStatus = status === 'available' && currentContact ? 'attending' : status
-  await saveStatus(status)
+  // Se guarda el estado REAL: si se guardara 'available' con un chat abierto,
+  // al reiniciarse el service worker el agente aparecería Disponible.
+  await saveStatus(desiredStatus)
   applyStatus()
   emitState()
 }

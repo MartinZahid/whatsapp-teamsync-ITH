@@ -36,7 +36,44 @@ interface Referencias {
 export class BitacoraSqlite implements Bitacora {
   private refs = new Map<string, Referencias>() // clave: id interno del agente
 
-  constructor(private readonly base: BaseDeDatos) {}
+  constructor(private readonly base: BaseDeDatos) {
+    this.cerrarPendientes()
+  }
+
+  // Si el servidor se cayó (sin Ctrl+C), pudieron quedar sesiones 'open' y
+  // agentes que la base cree conectados. Al arrancar se cierran con la hora del
+  // último evento conocido del agente (la mejor estimación) y se registra
+  // 'disconnected' con el motivo, para que los reportes no muestren basura.
+  private cerrarPendientes(): void {
+    this.seguro('cierre al arrancar', () => {
+      this.base.ejecutar(
+        `UPDATE sessions
+            SET ended_at = MAX(started_at, COALESCE((SELECT MAX(e.created_at) FROM events e WHERE e.agent_ref = sessions.agent_ref), started_at)),
+                status = 'closed'
+          WHERE status = 'open'`
+      )
+      this.base.ejecutar(`UPDATE sessions SET duration_seconds = ended_at - started_at WHERE duration_seconds IS NULL AND status = 'closed'`)
+
+      const colgados = this.base.todas<{ agente: number; nombre: string }>(
+        `SELECT s.agent_ref AS agente, a.name AS nombre
+           FROM agent_status s JOIN agents a ON a.id = s.agent_ref
+          WHERE s.status_ref <> ?`,
+        [ID_ESTADO.offline]
+      )
+      for (const { agente, nombre } of colgados) {
+        this.base.ejecutar(
+          `INSERT INTO events (agent_ref, agent_name, type, status_ref, detail, created_at)
+           VALUES (?, ?, 'disconnected', ?, 'cierre no registrado (reinicio del servidor)', ?)`,
+          [agente, nombre, ID_ESTADO.offline, ahora()]
+        )
+        this.base.ejecutar(
+          'UPDATE agent_status SET status_ref = ?, contact_ref = NULL, updated_at = ? WHERE agent_ref = ?',
+          [ID_ESTADO.offline, ahora(), agente]
+        )
+      }
+      if (colgados.length) console.log(`[Datos] ${colgados.length} agente(s) quedaron conectados en la base; se cerraron al arrancar`)
+    })
+  }
 
   // Los agentes activos de la tabla `agents` (los únicos que pueden conectarse).
   agentesRegistrados(): AgenteRegistrado[] {

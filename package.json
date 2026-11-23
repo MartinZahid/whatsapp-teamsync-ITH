@@ -6,6 +6,7 @@
   "scripts": {
     "build:server": "tsc -p server/tsconfig.json",
     "server": "node server/dist/server/src/server.js",
+    "agentes": "npm run build:server && node server/dist/server/src/herramientas/agentes.js",
     "dev:server": "tsc -p server/tsconfig.json --watch",
     "build:extension": "vite build -c extension/vite.config.ts && vite build -c extension/vite.content.config.ts",
     "typecheck:extension": "tsc -p extension/tsconfig.json",

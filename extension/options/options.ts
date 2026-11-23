@@ -30,7 +30,7 @@ function send(message: UiRequest): void {
 }
 
 // Lista de SOLO LECTURA: los agentes vienen de la base del servidor.
-// El alta y la baja se hacen con `npm run agentes` (luego, desde el dashboard).
+// El alta y la baja se hacen con `npm run agentes` en el servidor (luego, desde el dashboard).
 async function renderAgents(serverUrl: string): Promise<void> {
   const { names, fromServer } = await fetchAgentNames(serverUrl)
   agentList.replaceChildren()

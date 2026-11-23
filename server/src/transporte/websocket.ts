@@ -48,6 +48,12 @@ export function attachWebSocket(httpServer: Server, roomManager: RoomManager): W
         sendError(ws, 'PARSE_ERROR', 'Formato de mensaje inválido')
         return
       }
+      // JSON válido pero que no es un mensaje (p. ej. `null`, `5` o `[]`):
+      // sin esta revisión, `message.type` lanzaría un error y tumbaría el servidor.
+      if (typeof message !== 'object' || message === null || typeof message.type !== 'string') {
+        sendError(ws, 'PARSE_ERROR', 'El mensaje debe ser un objeto con "type"')
+        return
+      }
 
       // El primer mensaje (cualquiera) identifica al agente por su nombre.
       if (!agentId) {

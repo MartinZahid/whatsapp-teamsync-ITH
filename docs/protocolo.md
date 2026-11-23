@@ -26,7 +26,6 @@ y la cierra; la extensión que recibe `REPLACED` no intenta reconectarse.
 | `AVAILABLE` | `agent` | El agente queda disponible. |
 | `PAUSED` | `agent`, `reason?` | El agente pausa su atención. |
 | `OFFLINE` | `agent` | El agente se marca desconectado. |
-| `DELETE_AGENT` | `agent` | Elimina al agente del registro. |
 | `HEARTBEAT` | `agent` | Señal de actividad (cada 30 s). |
 | `HELP_REQUEST` | `agent`, `requesting` | Solicita ayuda (`true`) o la cancela (`false`) sin cambiar de estado. |
 
@@ -38,7 +37,17 @@ y la cierra; la extensión que recibe `REPLACED` no intenta reconectarse.
 | `SERVER_INFO` | `version`, `agents` | Estado inicial tras registrarse. |
 | `PRESENCE_UPDATE` | `agents` | Lista actualizada de agentes. |
 | `DUPLICATE_ALERT` | `contact`, `agents`, `at` | Dos o más agentes atienden el mismo contacto. |
-| `ERROR` | `code`, `message` | Error: `PARSE_ERROR`, `AUTH_REQUIRED` o `REPLACED`. |
+| `ERROR` | `code`, `message` | Error: `PARSE_ERROR` (no es JSON o no trae `type`), `AUTH_REQUIRED`, `UNKNOWN_AGENT` (el nombre no está dado de alta; la extensión deja de reintentar) o `REPLACED`. |
+
+La baja de agentes ya **no** viaja por el WebSocket (ADR-001): cualquier
+extensión podía darse de baja a sí misma. La hace el servidor (`npm run agentes`
+y, después, el dashboard).
+
+## HTTP
+
+| Ruta | Respuesta |
+|---|---|
+| `GET /api/agentes` | `[{ "name": "Ana Torres" }, ...]`: agentes activos de la tabla `agents` (lo usa el popup). `503` si el servidor corre sin base. |
 
 Cada agente de la presencia (`agents`) incluye, entre otros campos, `requesting`
 (`true` cuando pidió ayuda), que es independiente de su estado.

@@ -1,8 +1,9 @@
+// CAPA 3 · DATOS — contrato de la bitácora.
 
 // GUÍA DE LECTURA:
 //   `interface` = un contrato: lista de funciones SIN código. RoomManager solo
 //   conoce este contrato, no sabe si detrás hay SQLite o nada. Así:
-//     · BitacoraSqlite (bitacora-sqlite.ts) guarda de verdad.
+//     · BitacoraSqlite (bitacorasqlite.ts) guarda de verdad.
 //     · BitacoraNula (abajo) no hace nada: sirve con DB_PATH=off y en pruebas.
 
 import type { Agent, AgentStatus } from '../../../shared/types.js'

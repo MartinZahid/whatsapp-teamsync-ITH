@@ -47,6 +47,7 @@ httpServer.listen(PORT, HOST, () => {
 // Al detener el servidor (Ctrl+C) se guarda la base una última vez.
 function apagar(): void {
   console.log('[Servidor] Apagando...')
+  roomManager.apagar() // cierra sesiones abiertas y registra 'disconnected'
   base?.cerrar()
   process.exit(0)
 }

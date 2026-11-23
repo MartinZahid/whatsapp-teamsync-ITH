@@ -17,16 +17,17 @@ solo necesita saber qué agente está en uso en ese navegador.
 - El agente se identifica por **nombre**, y el servidor genera un **id interno**
   (`nombre-fecha-aleatorio`). Al reconectarse con el mismo nombre se reutiliza
   el registro para no perder su identidad.
-- Mientras el dashboard no exista, la lista de agentes se siembra en
-  `chrome.storage` desde la página de opciones (cuatro nombres de ejemplo,
-  editables). Es una medida provisional.
+- Los agentes viven en la tabla `agents`. Mientras el dashboard no exista, el
+  alta y la baja se hacen con `npm run agentes` (con el servidor detenido). La
+  extensión solo lee la lista con `GET /api/agentes`.
 
 **Consecuencias.**
 
 - Un mismo nombre no puede usarse en dos navegadores a la vez: el servidor
   considera la segunda conexión una reconexión y cierra la anterior.
-- El dashboard necesitará los mensajes de alta y eliminación cuando se
-  implemente; hoy existe `DELETE_AGENT` para la baja.
+- La baja se hace en el servidor (`RoomManager.darDeBaja`), que usará el
+  dashboard. Se quitó `DELETE_AGENT` del WebSocket (18/11/2026) porque
+  cualquier extensión podía darse de baja a sí misma.
 - La extensión no requiere permisos especiales para gestionar agentes.
 
 **Alternativas descartadas.**
