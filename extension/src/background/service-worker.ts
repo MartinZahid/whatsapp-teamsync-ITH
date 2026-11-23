@@ -7,15 +7,12 @@
 
 import type { Agent, AgentStatus, ClientToServerMessage, ServerToClientMessage } from '@shared/types'
 import {
-  DEFAULT_AGENTS,
   DEFAULT_SERVER_URL,
-  getAgentsList,
   getConfig,
   getConnection,
   getCurrentContact,
   getPresence,
   getSavedStatus,
-  saveAgentsList,
   saveConfig,
   saveConnection,
   saveCurrentContact,
@@ -53,9 +50,6 @@ async function init(): Promise<void> {
   connection = await getConnection()
   desiredStatus = await getSavedStatus()
   currentContact = await getCurrentContact()
-
-  const list = await getAgentsList()
-  await saveAgentsList(list.length ? list : DEFAULT_AGENTS)
 
   ensureAlarm()
   if (config.name) connect()
@@ -210,6 +204,11 @@ function resyncIfNeeded(): void {
   if (!config.name || socket?.readyState !== WebSocket.OPEN) return
   const self = agents.find((agent) => agent.name === config.name)
   if (self?.status !== effectiveStatus()) applyStatus()
+  // Al pasar a Desconectado el servidor borra la ayuda pendiente; si aquí
+  // sigue activa, se vuelve a pedir para que popup, panel y servidor coincidan.
+  if (self && self.requesting !== requesting) {
+    send({ type: 'HELP_REQUEST', agent: config.name, requesting })
+  }
 }
 
 function handleServerMessage(message: ServerToClientMessage): void {
@@ -230,6 +229,10 @@ function handleServerMessage(message: ServerToClientMessage): void {
         // Otro navegador tomó este agente: no reintentamos, o se tumbarían en bucle.
         manualDisconnect = true
         void setConnection('disconnected', 'Este agente se abrió en otro navegador')
+      } else if (message.code === 'UNKNOWN_AGENT') {
+        // El nombre no está en la base: reintentar no sirve hasta que lo den de alta.
+        manualDisconnect = true
+        void setConnection('disconnected', 'Este agente no está dado de alta en el servidor')
       } else {
         console.warn('[WTS] Error del servidor:', message.code, message.message)
       }
@@ -249,7 +252,9 @@ function flashBadge(): void {
 async function applyStatusChange(status: AgentStatus): Promise<void> {
   // Al reanudar con un chat abierto, el agente vuelve a "Atendiendo" (RN-01).
   desiredStatus = status === 'available' && currentContact ? 'attending' : status
-  await saveStatus(status)
+  // Se guarda el estado REAL: si se guardara 'available' con un chat abierto,
+  // al reiniciarse el service worker el agente aparecería Disponible.
+  await saveStatus(desiredStatus)
   applyStatus()
   emitState()
 }

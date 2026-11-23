@@ -1,4 +1,5 @@
 import { STATUS_COLORS, STATUS_LABELS, type Agent, type AgentStatus } from '@shared/types'
+import { fetchAgentNames } from '../src/lib/agents-api'
 import {
   DEFAULT_SERVER_URL,
   getAgentsList,
@@ -52,6 +53,14 @@ function setBadge(badge: HTMLElement, status: AgentStatus, requesting: boolean):
 // Pinta la lista de agentes; el seleccionado se resalta.
 function renderAgents(): void {
   agentList.replaceChildren()
+
+  if (names.length === 0) {
+    const empty = document.createElement('li')
+    empty.className = 'agent-empty'
+    empty.textContent = 'No hay agentes. Revisa la conexión con el servidor o da de alta agentes.'
+    agentList.append(empty)
+    return
+  }
 
   for (const name of names) {
     const agent = agents.find((item) => item.name === name)
@@ -117,7 +126,6 @@ function applyState(state: AppState): void {
   config = state.config
   agents = state.agents
 
-  if (config.name && !names.includes(config.name)) names.push(config.name)
   if (document.activeElement !== urlInput && urlInput.value !== config.serverUrl) {
     urlInput.value = config.serverUrl
   }
@@ -143,8 +151,8 @@ function showDuplicate(contact: string, names: string[]): void {
 
 async function init(): Promise<void> {
   config = await getConfig()
+  // Primero la lista guardada (aparece al instante) y luego la del servidor.
   names = await getAgentsList()
-  if (config.name && !names.includes(config.name)) names.push(config.name)
 
   urlInput.value = config.serverUrl
 
@@ -156,12 +164,22 @@ async function init(): Promise<void> {
 
   const response = await request<{ ok: boolean; state?: AppState }>({ type: 'GET_STATE' })
   if (response?.state) applyState(response.state)
+
+  await refreshNames()
+}
+
+// Pide al servidor la lista de agentes dados de alta (tabla `agents`).
+async function refreshNames(): Promise<void> {
+  const result = await fetchAgentNames(config.serverUrl)
+  names = result.names
+  renderAgents()
 }
 
 urlInput.addEventListener('change', () => {
   config = { ...config, serverUrl: urlInput.value.trim() || DEFAULT_SERVER_URL }
   urlInput.value = config.serverUrl
   void request({ type: 'SET_CONFIG', config })
+  void refreshNames()
 })
 
 testButton.addEventListener('click', async () => {

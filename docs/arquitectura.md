@@ -8,9 +8,9 @@ común entre todas.
 | 1. Presentación | Navegador | `extension/` | Ya existe, sin cambios |
 | | | `dashboard/` | Nuevo (aún no se crea) |
 | 2. Transporte | Servidor | `server/src/transporte/websocket.ts` | Ya existe |
-| | | `server/src/transporte/http/` (dashboard y login) | Nuevo (aún no se crea) |
-| 3. Lógica | Servidor | `server/src/logica/room-manager.ts` | Ya existe; solo agregará llamadas a `datos/` |
-| 4. Datos | Servidor | `server/src/datos/` + SQLite en `data/` | Nuevo (aún no se crea) |
+| | | `server/src/transporte/http.ts` (`GET /api/agentes`; luego dashboard y login) | Existe; falta el dashboard |
+| 3. Lógica | Servidor | `server/src/logica/room-manager.ts` | Ya existe; llama a la bitácora |
+| 4. Datos | Servidor | `server/src/datos/` + SQLite en `data/` | Ya existe (agentes, contactos, sesiones, bitácora) |
 
 ```
  Navegador                     Servidor (Node)
@@ -35,10 +35,12 @@ server/src/
   server.ts            # Arranque: crea las piezas y las une (sin lógica)
   transporte/
     websocket.ts       # Canal con la extensión
-    http/              # (nuevo) login y rutas del dashboard
+    http.ts            # API HTTP (lista de agentes; luego dashboard y login)
   logica/
     room-manager.ts    # Presencia, estados, duplicidad, heartbeat
-  datos/               # (nuevo) SQLite y repos
+  datos/               # SQLite (sql.js): conexión, esquema, agentes, contactos, bitácora
+  herramientas/
+    agentes.ts         # npm run agentes: alta/baja mientras no hay dashboard
 ```
 
 La extensión no se reorganiza: toda ella es la capa de presentación y su

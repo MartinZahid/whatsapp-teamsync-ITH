@@ -23,6 +23,7 @@ import {
   normalizeContact
 } from '../../../shared/types.js'
 import { APP_VERSION } from '../../../shared/version.js'
+import { BitacoraNula, type Bitacora } from '../datos/bitacora.js'
 
 // Tiempo sin señal tras el cual un agente se considera desconectado (RN-04).
 const HEARTBEAT_TIMEOUT_MS = 60000
@@ -36,12 +37,40 @@ export class RoomManager {
   // Conexión WebSocket de cada agente, indexada por su id interno.
   private connections = new Map<string, WebSocket>()
 
+  // La bitácora se recibe desde fuera (server.ts). Si no se da, no se guarda nada.
+  // Si hay base, solo pueden conectarse los agentes dados de alta en ella.
+  private readonly restringido: boolean
+
+  constructor(private readonly bitacora: Bitacora = new BitacoraNula()) {
+    // Al arrancar se cargan los agentes de la base como Desconectados, así la
+    // lista de presencia muestra a TODO el equipo aunque nadie se haya conectado.
+    const registrados = bitacora.agentesRegistrados()
+    this.restringido = registrados !== null
+    for (const { agentId, name } of registrados ?? []) {
+      this.agents.set(agentId, {
+        id: agentId,
+        name,
+        status: 'offline',
+        contact: null,
+        lastSeen: 0,
+        requesting: false,
+        attendingSince: null
+      })
+    }
+    if (registrados) console.log(`[Servidor] ${registrados.length} agentes cargados de la base`)
+  }
+
   // Registra una conexión y devuelve el id del agente. Si ya existe un agente
   // con el mismo nombre, reutiliza su registro (reconexión) para que conserve
   // su identidad. No difunde nada: el mensaje que identificó al agente se
   // procesa justo después con handleMessage() y ese ya difunde el estado real.
-  register(ws: WebSocket, name: string): string {
-    const existing = this.getAllAgents().find((a) => a.name === name)
+  // Devuelve null si hay base y el nombre no está dado de alta.
+  register(ws: WebSocket, name: string): string | null {
+    const existing = this.getAllAgents().find((a) => a.name === name) ?? this.cargarDeLaBase(name)
+    if (!existing && this.restringido) {
+      console.log(`[Servidor] Rechazado: "${name}" no está dado de alta`)
+      return null
+    }
 
     if (existing) {
       const previous = this.connections.get(existing.id)
@@ -57,13 +86,14 @@ export class RoomManager {
       }
       this.connections.set(existing.id, ws)
       existing.lastSeen = Date.now()
-      console.log(`[Servidor] Agente reconectado: ${name}`)
+      console.log(`[Servidor] Agente conectado: ${name}`)
+      this.bitacora.agenteConectado(existing)
       return existing.id
     }
 
     const id = `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     this.connections.set(id, ws)
-    this.agents.set(id, {
+    const agent: Agent = {
       id,
       name,
       status: 'available',
@@ -71,25 +101,30 @@ export class RoomManager {
       lastSeen: Date.now(),
       requesting: false,
       attendingSince: null
-    })
+    }
+    this.agents.set(id, agent)
     console.log(`[Servidor] Agente registrado: ${name}`)
+    this.bitacora.agenteConectado(agent)
     return id
   }
 
   // Cambia el estado de un agente y lleva el cronómetro de atención
   // (`attendingSince`): arranca al empezar a atender un chat y se limpia al salir.
-  private setStatus(agent: Agent, status: AgentStatus, contact: string | null = null): void {
+  private setStatus(agent: Agent, status: AgentStatus, contact: string | null = null, reason?: string): void {
+    const before = agent.status
+    const contactBefore = agent.contact
     const sameChat = agent.status === 'attending' && status === 'attending' && agent.contact === contact
     agent.status = status
     agent.contact = contact
     if (status !== 'attending') agent.attendingSince = null
     else if (!sameChat || agent.attendingSince === null) agent.attendingSince = Date.now()
+    this.bitacora.cambioDeEstado(agent, before, contactBefore, reason)
   }
 
   // Pasa a Desconectado. Una ayuda pendiente no sobrevive a una desconexión.
-  // (Aquí se registrará el evento `disconnected` en la bitácora.)
+  // La bitácora registra `disconnected` con el motivo.
   private goOffline(agent: Agent, reason: string): void {
-    this.setStatus(agent, 'offline')
+    this.setStatus(agent, 'offline', null, reason)
     agent.requesting = false
     console.log(`[Servidor] ${agent.name} desconectado (${reason})`)
   }
@@ -105,6 +140,8 @@ export class RoomManager {
     // `switch` sobre `type`: en cada caso TypeScript ya sabe qué campos trae.
     switch (message.type) {
       case 'ATTENDING': {
+        // Sin nombre de contacto no hay chat que atender: se ignora el mensaje.
+        if (typeof message.contact !== 'string' || !message.contact.trim()) return
         const sameChat = agent.status === 'attending' && agent.contact === message.contact
         this.setStatus(agent, 'attending', message.contact)
         this.broadcastPresence()
@@ -129,15 +166,11 @@ export class RoomManager {
         break
       case 'HELP_REQUEST':
         // Solicita o cancela ayuda SIN tocar el estado.
+        if (agent.requesting !== message.requesting) this.bitacora.ayuda(agent, message.requesting)
         agent.requesting = message.requesting
         console.log(
           `[Servidor] ${agent.name} ${message.requesting ? 'solicita ayuda' : 'cancela la solicitud de ayuda'}`
         )
-        break
-      case 'DELETE_AGENT':
-        this.agents.delete(agentId)
-        this.connections.delete(agentId)
-        console.log(`[Servidor] Agente eliminado: ${agent.name}`)
         break
       default:
         // HEARTBEAT (u otro) solo actualiza la actividad.
@@ -145,6 +178,49 @@ export class RoomManager {
     }
 
     this.broadcastPresence()
+  }
+
+  // Busca en la base un agente que se dio de alta después de arrancar el
+  // servidor (p. ej. desde el dashboard) y lo agrega a la sala como Desconectado.
+  private cargarDeLaBase(name: string): Agent | undefined {
+    if (!this.restringido) return undefined
+    const fila = this.bitacora.agentesRegistrados()?.find((a) => a.name === name)
+    if (!fila) return undefined
+    const agent: Agent = {
+      id: fila.agentId,
+      name,
+      status: 'offline',
+      contact: null,
+      lastSeen: 0,
+      requesting: false,
+      attendingSince: null
+    }
+    this.agents.set(agent.id, agent)
+    return agent
+  }
+
+  // Baja de un agente (ADR-001: la pide el dashboard, NO la extensión).
+  // Cierra su conexión si estaba conectado y lo quita de la presencia.
+  darDeBaja(name: string): boolean {
+    const agent = this.getAllAgents().find((a) => a.name === name)
+    if (!agent) return false
+    const ws = this.connections.get(agent.id)
+    this.connections.delete(agent.id)
+    if (agent.status !== 'offline') this.goOffline(agent, 'baja del agente')
+    this.bitacora.bajaAgente(agent)
+    this.agents.delete(agent.id)
+    ws?.close()
+    console.log(`[Servidor] Agente dado de baja: ${agent.name}`)
+    this.broadcastPresence()
+    return true
+  }
+
+  // Al detener el servidor: deja a todos Desconectados para que la bitácora
+  // cierre las sesiones abiertas con la hora real (si no, quedan 'open').
+  apagar(): void {
+    for (const agent of this.agents.values()) {
+      if (agent.status !== 'offline') this.goOffline(agent, 'servidor detenido')
+    }
   }
 
   // RN-07: avisa a todos si otro agente ya atiende el mismo contacto.
@@ -171,6 +247,7 @@ export class RoomManager {
     console.log(
       `[Servidor] Atención duplicada en "${agent.contact}": ${alert.agents.map((a) => a.name).join(', ')}`
     )
+    this.bitacora.duplicidad([agent, ...others])
     this.sendToAll(alert)
   }
 

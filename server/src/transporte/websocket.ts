@@ -48,6 +48,12 @@ export function attachWebSocket(httpServer: Server, roomManager: RoomManager): W
         sendError(ws, 'PARSE_ERROR', 'Formato de mensaje inválido')
         return
       }
+      // JSON válido pero que no es un mensaje (p. ej. `null`, `5` o `[]`):
+      // sin esta revisión, `message.type` lanzaría un error y tumbaría el servidor.
+      if (typeof message !== 'object' || message === null || typeof message.type !== 'string') {
+        sendError(ws, 'PARSE_ERROR', 'El mensaje debe ser un objeto con "type"')
+        return
+      }
 
       // El primer mensaje (cualquiera) identifica al agente por su nombre.
       if (!agentId) {
@@ -55,7 +61,13 @@ export function attachWebSocket(httpServer: Server, roomManager: RoomManager): W
           sendError(ws, 'AUTH_REQUIRED', 'El primer mensaje debe incluir el nombre del agente')
           return
         }
-        agentId = roomManager.register(ws, message.agent.trim())
+        const id = roomManager.register(ws, message.agent.trim())
+        if (!id) {
+          sendError(ws, 'UNKNOWN_AGENT', 'Este agente no está dado de alta')
+          ws.close()
+          return
+        }
+        agentId = id
         // Primero se aplica el estado que trae el mensaje y luego se manda el
         // estado inicial, para que el agente ya se vea con su estado real.
         roomManager.handleMessage(agentId, message)

@@ -39,7 +39,6 @@ export type ClientToServerMessage =
   | { type: 'AVAILABLE'; agent: string }
   | { type: 'PAUSED'; agent: string; reason?: string }
   | { type: 'OFFLINE'; agent: string }
-  | { type: 'DELETE_AGENT'; agent: string }
   | { type: 'HEARTBEAT'; agent: string }
   // Solicitud de ayuda (RN-03): no cambia el estado, es un aviso independiente.
   | { type: 'HELP_REQUEST'; agent: string; requesting: boolean }
@@ -58,7 +57,7 @@ export interface DuplicateAlertMessage {
 //   PARSE_ERROR   el texto recibido no es JSON válido
 //   AUTH_REQUIRED el primer mensaje no traía el nombre del agente
 //   REPLACED      el mismo agente se conectó desde otro navegador
-export type ErrorCode = 'PARSE_ERROR' | 'AUTH_REQUIRED' | 'REPLACED'
+export type ErrorCode = 'PARSE_ERROR' | 'AUTH_REQUIRED' | 'REPLACED' | 'UNKNOWN_AGENT'
 
 export type ServerToClientMessage =
   | { type: 'WELCOME'; message: string; protocol: string }

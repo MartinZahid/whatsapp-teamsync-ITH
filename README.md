@@ -22,6 +22,8 @@ npm install
 
 - `npm run build:server` — compila el servidor con TypeScript.
 - `npm run server` — inicia el servidor en `http://localhost:3001`.
+- `npm run agentes -- alta "Ana Torres"` — da de alta agentes (también `baja` y `lista`). Detén el servidor antes: sql.js guarda la base en memoria y sobrescribiría el cambio.
+- `npm test` — compila el servidor y corre las pruebas (base en memoria).
 - `npm run dev:server` — compila el servidor en modo vigilancia.
 - `npm run build:extension` — compila la extensión en `extension/dist`.
 - `npm run typecheck:extension` — revisa los tipos de la extensión.
@@ -37,8 +39,12 @@ server/
     server.ts        # Arranque: crea y une las capas
     transporte/
       websocket.ts   # Transporte: canal WebSocket con la extensión
+      http.ts        # Transporte: GET /api/agentes
     logica/
       room-manager.ts  # Lógica: registro de agentes y presencia
+    datos/           # Datos: SQLite (sql.js) y bitácora
+    herramientas/
+      agentes.ts     # npm run agentes (alta / baja / lista)
   tsconfig.json
 shared/
   types.ts           # Tipos y protocolo compartidos
@@ -66,8 +72,11 @@ docs/
 
    ```bash
    npm run build:server
+   npm run agentes -- alta "Ana Torres" "Luis Pérez"   # solo la primera vez
    npm run server
    ```
+
+   Sin agentes dados de alta nadie puede conectarse (`UNKNOWN_AGENT`).
 
 2. Cargar la extensión en Chrome (ver abajo) y abrir WhatsApp Web con un
    agente en cada navegador.
