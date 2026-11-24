@@ -1,0 +1,409 @@
+/* ESTILOS DEL DASHBOARD (capa de presentación).
+   Un solo archivo para todas las páginas. Va en secciones:
+     1. Variables  2. Base  3. Componentes comunes  4. Login
+     5. Barra y pestañas  6. Contenido  7. En vivo
+   Los colores y medidas se cambian solo en las variables. */
+
+/* ---------- 1. Variables ---------- */
+:root {
+  --naranja: #EA4E2F;         /* Color de Point: barra, botones, logo */
+  --naranja-hover: #D4401F;   /* Botón al pasar el mouse */
+  --naranja-texto: #B8391E;   /* Texto naranja chico (se lee mejor) */
+  --naranja-suave: #FDF1EE;   /* Fondo del filtro elegido */
+
+  --fondo: #F4F5F7;
+  --blanco: #FFFFFF;
+  --texto: #1F2329;
+  --texto-suave: #5B6270;
+  --borde: #D0D5DD;
+  --borde-suave: #EAECF0;
+  --rojo: #C0392B;
+
+  /* Mismos colores de estado que la extensión (shared/types.ts) */
+  --atendiendo: #ef4444;
+  --disponible: #22c55e;
+  --pausado: #f59e0b;
+  --desconectado: #9ca3af;
+
+  --radio: 8px;
+  --sombra: 0 1px 3px rgba(16, 24, 40, .08), 0 12px 32px rgba(16, 24, 40, .08);
+}
+
+/* ---------- 2. Base ---------- */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--texto);
+  background: var(--fondo);
+}
+
+h1, h2, p {
+  margin: 0;
+}
+
+/* ---------- 3. Componentes comunes ---------- */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.campo label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.campo input {
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  font: inherit;
+  font-size: 15px;
+}
+
+.campo input:focus {
+  border-color: var(--naranja);
+  outline: 3px solid rgba(234, 78, 47, .25);
+}
+
+.boton {
+  height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--radio);
+  background: var(--naranja-hover);
+  color: var(--blanco);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.boton:hover {
+  background: var(--naranja-texto);
+}
+
+.boton-grande {
+  height: 52px;
+  font-size: 19px;
+  background: var(--naranja);
+}
+
+.boton-icono {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--radio);
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.boton-icono:hover {
+  background: var(--fondo);
+}
+
+.mensaje-error {
+  font-size: 14px;
+  color: var(--rojo);
+}
+
+.tarjeta {
+  padding: 20px;
+  background: var(--blanco);
+  border: 1px solid var(--borde-suave);
+  border-radius: 12px;
+}
+
+/* ---------- 4. Login ---------- */
+.pagina-login {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.franja {
+  height: 6px;
+  background: var(--naranja);
+}
+
+.contenedor-login {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+}
+
+.tarjeta-login {
+  width: 100%;
+  max-width: 400px;
+  padding: 40px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--blanco);
+  border-radius: 14px;
+  box-shadow: var(--sombra);
+}
+
+.encabezado-login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.encabezado-login h1 {
+  margin-top: 6px;
+  font-size: 22px;
+}
+
+.encabezado-login p {
+  font-size: 14px;
+  color: var(--texto-suave);
+}
+
+.logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--naranja);
+}
+
+/* ---------- 5. Barra y pestañas (todas las páginas menos el login) ---------- */
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 0 28px;
+  height: 64px;
+  background: var(--naranja);
+  color: var(--blanco);
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.logo-chico {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--blanco);
+}
+
+.pestanas {
+  flex: 1;
+  display: flex;
+  align-self: stretch;
+  gap: 4px;
+}
+
+.pestana {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-bottom: 3px solid transparent;
+  color: rgba(255, 255, 255, .85);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.pestana:hover {
+  color: var(--blanco);
+}
+
+/* La pestaña de la página en la que estás */
+.pestana.activa {
+  border-bottom-color: var(--blanco);
+  color: var(--blanco);
+}
+
+.salir {
+  color: var(--blanco);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.salir:hover {
+  text-decoration: underline;
+}
+
+/* ---------- 6. Contenido de cada página ---------- */
+.contenido {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.fila-titulo h1 {
+  font-size: 26px;
+}
+
+.fila-titulo p {
+  margin-top: 4px;
+  color: var(--texto-suave);
+}
+
+.contenido > section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.encabezado-seccion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.encabezado-seccion h2 {
+  font-size: 18px;
+}
+
+/* Aviso de las páginas que todavía no tienen contenido */
+.en-construccion {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--texto-suave);
+}
+
+/* Tablas */
+.tabla-contenedor {
+  overflow-x: auto;
+  background: var(--blanco);
+  border: 1px solid var(--borde-suave);
+  border-radius: 12px;
+}
+
+table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+th {
+  padding: 12px 20px;
+  background: #F9FAFB;
+  color: var(--texto-suave);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+td {
+  padding: 12px 20px;
+  border-top: 1px solid var(--borde-suave);
+}
+
+.acciones {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ---------- 7. En vivo ---------- */
+.contadores {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.contador {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contador span {
+  font-size: 14px;
+  color: var(--texto-suave);
+}
+
+.contador strong {
+  font-size: 30px;
+}
+
+/* Raya de color arriba de cada contador */
+.contador.atendiendo   { border-top: 4px solid var(--atendiendo); }
+.contador.disponible   { border-top: 4px solid var(--disponible); }
+.contador.pausado      { border-top: 4px solid var(--pausado); }
+.contador.desconectado { border-top: 4px solid var(--desconectado); }
+
+/* Filtro Activos / Inactivos */
+.filtro {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+}
+
+.filtro button {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--texto-suave);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filtro button[aria-pressed="true"] {
+  background: var(--naranja-suave);
+  color: var(--naranja-texto);
+}
+
+.titulo-con-filtro {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Etiqueta de estado: "● Atendiendo" */
+.estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.estado::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.estado.atendiendo::before   { background: var(--atendiendo); }
+.estado.disponible::before   { background: var(--disponible); }
+.estado.pausado::before      { background: var(--pausado); }
+.estado.desconectado::before { background: var(--desconectado); }
+
+.vacio {
+  color: var(--texto-suave);
+}
