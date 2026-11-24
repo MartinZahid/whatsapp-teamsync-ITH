@@ -36,3 +36,35 @@ solo necesita saber qué agente está en uso en ese navegador.
   rompería la separación de permisos (`consulta` / `gestion`).
 - Identificar solo por id generado: menos legible para el agente y para el
   historial del reporte.
+
+## ADR-002: nombre y teléfono de los contactos (24/11/2026)
+
+**Contexto.** La extensión solo conoce el nombre del chat tal como lo muestra
+WhatsApp Web. Los chats no agendados aparecen como número
+("+52 662 184 3920"). Desde el dashboard se quiere poder ponerles un nombre.
+
+**Decisión.**
+
+- El contacto se identifica por `wa_id` (el nombre del chat normalizado). Eso
+  no cambia.
+- `name` se guarda la primera vez y ya no se sobrescribe al abrir el chat. El
+  nombre que se ponga desde el dashboard es solo visual: no cambia cómo se
+  reconoce el contacto.
+- Si el nombre del chat es un número (solo dígitos, espacios, `+`, `(`, `)`
+  o `-`, y entre 8 y 15 dígitos), se guarda en `phone` solo con dígitos.
+
+**Consecuencias / limitación.**
+
+- Si después el número se agenda en el teléfono, el chat cambia de nombre y
+  se registra como un contacto nuevo; el historial anterior se queda en el
+  contacto del número. Lo mismo si un establecimiento escribe desde varios
+  números: cada uno es un contacto.
+
+**Alternativas descartadas (trabajo futuro).**
+
+- "Unir contactos" desde el dashboard: requiere una columna nueva
+  (`merged_into`), migrar la base y actualizar el diagrama ER y el
+  diccionario. Se dejó fuera por tiempo.
+- Leer el identificador interno del chat de WhatsApp (número con `@c.us`):
+  lo resolvería de raíz, pero cambia la extensión y el protocolo y depende de
+  la estructura de la página de WhatsApp Web.
