@@ -1,0 +1,88 @@
+/* ESTILOS DE en-vivo.html
+   Solo lo propio de En vivo: contadores, filtro Activos/Inactivos y
+   etiquetas de estado. Lo común (barra, tablas, botones) está en comun.css. */
+
+.contadores {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.contador {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contador span {
+  font-size: 14px;
+  color: var(--texto-suave);
+}
+
+.contador strong {
+  font-size: 30px;
+}
+
+/* Raya de color arriba de cada contador */
+.contador.atendiendo   { border-top: 4px solid var(--atendiendo); }
+.contador.disponible   { border-top: 4px solid var(--disponible); }
+.contador.pausado      { border-top: 4px solid var(--pausado); }
+.contador.desconectado { border-top: 4px solid var(--desconectado); }
+
+/* Filtro Activos / Inactivos */
+.filtro {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+}
+
+.filtro button {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--texto-suave);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filtro button[aria-pressed="true"] {
+  background: var(--naranja-suave);
+  color: var(--naranja-texto);
+}
+
+.titulo-con-filtro {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Etiqueta de estado: "● Atendiendo" */
+.estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.estado::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.estado.atendiendo::before   { background: var(--atendiendo); }
+.estado.disponible::before   { background: var(--disponible); }
+.estado.pausado::before      { background: var(--pausado); }
+.estado.desconectado::before { background: var(--desconectado); }
+
+.vacio {
+  color: var(--texto-suave);
+}
