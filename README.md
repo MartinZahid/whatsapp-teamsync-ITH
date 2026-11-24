@@ -22,7 +22,7 @@ npm install
 
 - `npm run build:server` — compila el servidor con TypeScript.
 - `npm run server` — inicia el servidor en `http://localhost:3001`.
-  Con el servidor corriendo, el dashboard se abre en `http://localhost:3001/` (por ahora solo pantallas y navegación, con datos de ejemplo).
+  Con el servidor corriendo, el portal web (dashboard, carpeta `portal-web/`) se abre en `http://localhost:3001/` (por ahora solo pantallas y navegación, con datos de ejemplo).
 - `npm run agentes -- alta "Ana Torres"` — da de alta agentes (también `baja` y `lista`). Detén el servidor antes: sql.js guarda la base en memoria y sobrescribiría el cambio.
 - `npm test` — compila el servidor y corre las pruebas (base en memoria).
 - `npm run dev:server` — compila el servidor en modo vigilancia.
@@ -85,7 +85,7 @@ docs/
 3. Observar cómo se actualiza la presencia. Al cerrar WhatsApp Web el agente se
    marca como `Desconectado`; al volver con el mismo nombre recupera su perfil.
 
-4. Abrir el dashboard en `http://localhost:3001/`. Por ahora "Entrar" no valida
+4. Abrir el portal web en `http://localhost:3001/`. Por ahora "Entrar" no valida
    el usuario y las pestañas solo navegan entre páginas.
 
 ## Extensión en Chrome

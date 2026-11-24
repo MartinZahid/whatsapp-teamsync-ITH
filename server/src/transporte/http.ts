@@ -4,10 +4,10 @@
 //   1. API (JSON):
 //        GET /api/agentes  -> lista de agentes dados de alta (la usa el popup
 //                             de la extensión para mostrar a quién elegir).
-//   2. Dashboard: cualquier otra ruta entrega un archivo de la carpeta
-//      `dashboard/` (HTML, CSS). "/" entrega el login.
-//        http://localhost:3001/            -> dashboard/login.html
-//        http://localhost:3001/index.html  -> dashboard/index.html (En vivo)
+//   2. Portal web (dashboard): cualquier otra ruta entrega un archivo de la
+//      carpeta `portal-web/` (HTML, CSS). "/" entrega el login.
+//        http://localhost:3001/              -> portal-web/login.html
+//        http://localhost:3001/en-vivo.html  -> portal-web/en-vivo.html
 //   Más adelante aquí se agregan el login real y las rutas de cada pestaña.
 
 import { readFileSync } from 'node:fs'
@@ -18,9 +18,9 @@ import type { AgenteRegistrado } from '../datos/bitacora.js'
 // Quien lea los agentes (la bitácora). null = no hay base.
 type FuenteAgentes = () => AgenteRegistrado[] | null
 
-// Carpeta del dashboard. Es relativa a donde se arranca el servidor
+// Carpeta del portal web. Es relativa a donde se arranca el servidor
 // (`npm run server` se corre desde la raíz del repo, igual que `data/`).
-const CARPETA_DASHBOARD = resolve('dashboard')
+const CARPETA_PORTAL = resolve('portal-web')
 
 // Tipo de contenido según la extensión del archivo.
 const TIPOS: Record<string, string> = {
@@ -50,7 +50,7 @@ export function crearManejadorHttp(agentes: FuenteAgentes) {
     }
 
     if (req.method === 'GET') {
-      servirDashboard(ruta, res)
+      servirPortal(ruta, res)
       return
     }
 
@@ -59,13 +59,13 @@ export function crearManejadorHttp(agentes: FuenteAgentes) {
   }
 }
 
-// Entrega un archivo de `dashboard/`. "/" = login.
-function servirDashboard(ruta: string, res: ServerResponse): void {
+// Entrega un archivo de `portal-web/`. "/" = login.
+function servirPortal(ruta: string, res: ServerResponse): void {
   const nombre = ruta === '/' ? 'login.html' : decodeURIComponent(ruta.slice(1))
-  const archivo = resolve(CARPETA_DASHBOARD, nombre)
+  const archivo = resolve(CARPETA_PORTAL, nombre)
 
   // Seguridad: no dejar salir de la carpeta (por ejemplo "/../data/base.db").
-  if (!archivo.startsWith(CARPETA_DASHBOARD + sep)) {
+  if (!archivo.startsWith(CARPETA_PORTAL + sep)) {
     noEncontrado(res)
     return
   }
