@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iniciar sesión · WhatsApp Team Sync</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <div class="pagina-login">
+    <div class="franja"></div>
+
+    <main class="contenedor-login">
+      <!-- Por ahora el botón solo lleva a En vivo: todavía no se valida el
+           usuario. Los campos no llevan `name` para que no viajen en la URL;
+           se agregan cuando exista el login real. -->
+      <form class="tarjeta-login" action="index.html" method="get">
+        <div class="encabezado-login">
+          <div class="logo" aria-hidden="true"></div>
+          <h1>WhatsApp Team Sync</h1>
+          <p>Inicia sesión para ver a tu equipo</p>
+        </div>
+
+        <div class="campo">
+          <label for="usuario">Usuario</label>
+          <input id="usuario" type="text" autocomplete="username">
+        </div>
+
+        <div class="campo">
+          <label for="contrasena">Contraseña</label>
+          <input id="contrasena" type="password" autocomplete="current-password">
+        </div>
+
+        <!-- Lo mostrará el login real cuando el usuario no exista -->
+        <p class="mensaje-error" hidden>Usuario o contraseña incorrectos.</p>
+
+        <button class="boton boton-grande" type="submit">Entrar</button>
+      </form>
+    </main>
+  </div>
+</body>
+</html>

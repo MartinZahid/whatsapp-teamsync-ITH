@@ -3,4 +3,5 @@ dist/
 *.log
 *.db
 .env
-data/Claude outputs/
+data/
+Claude outputs/

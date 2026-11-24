@@ -6,9 +6,9 @@ común entre todas.
 | Capa | Dónde corre | Archivos | Estado |
 |---|---|---|---|
 | 1. Presentación | Navegador | `extension/` | Ya existe, sin cambios |
-| | | `dashboard/` | Nuevo (aún no se crea) |
+| | | `dashboard/` | Existe: pantallas y navegación (sin datos todavía) |
 | 2. Transporte | Servidor | `server/src/transporte/websocket.ts` | Ya existe |
-| | | `server/src/transporte/http.ts` (`GET /api/agentes`; luego dashboard y login) | Existe; falta el dashboard |
+| | | `server/src/transporte/http.ts` (`GET /api/agentes` y archivos de `dashboard/`) | Existe; falta el login real y la API de cada pestaña |
 | 3. Lógica | Servidor | `server/src/logica/room-manager.ts` | Ya existe; llama a la bitácora |
 | 4. Datos | Servidor | `server/src/datos/` + SQLite en `data/` | Ya existe (agentes, contactos, sesiones, bitácora) |
 
@@ -35,7 +35,7 @@ server/src/
   server.ts            # Arranque: crea las piezas y las une (sin lógica)
   transporte/
     websocket.ts       # Canal con la extensión
-    http.ts            # API HTTP (lista de agentes; luego dashboard y login)
+    http.ts            # API HTTP (lista de agentes) y entrega de dashboard/
   logica/
     room-manager.ts    # Presencia, estados, duplicidad, heartbeat
   datos/               # SQLite (sql.js): conexión, esquema, agentes, contactos, bitácora
@@ -67,10 +67,12 @@ Estas carpetas se crean cuando empiece su paso del plan; hoy no existen.
 - `server/src/transporte/http/`
   - `router.ts` — sirve `dashboard/` y la API JSON.
   - `auth.ts` — login, cookie de sesión y roles `consulta` / `gestion`.
-- `dashboard/`
-  - `index.html`, `login.html`, `styles.css`
-  - `app.js` — interfaz (En vivo, Historial, Reportes, Respaldo).
-  - `api.js` — único archivo que hace `fetch` al servidor.
+- `dashboard/` (ya existe: una página HTML por pestaña, sin JavaScript todavía)
+  - `login.html` — inicio de sesión ("/" del servidor).
+  - `index.html` (En vivo), `historial.html`, `reportes.html`, `respaldo.html`.
+  - `css/estilos.css` — estilos de todas las páginas.
+  - Después: `js/api.js` (único archivo que hace `fetch` al servidor) y un
+    `js/<pestaña>.js` por página para llenar las tablas.
 - `data/` — archivo SQLite (no se versiona).
 
 ## Orden de trabajo

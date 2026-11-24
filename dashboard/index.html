@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>En vivo · WhatsApp Team Sync</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <!-- Barra con las pestañas: es igual en todas las páginas;
+       solo cambia cuál lleva la clase "activa". -->
+  <header class="barra">
+    <div class="marca">
+      <span class="logo-chico" aria-hidden="true"></span>
+      WhatsApp Team Sync
+    </div>
+    <nav class="pestanas" aria-label="Secciones">
+      <a class="pestana activa" href="index.html" aria-current="page">En vivo</a>
+      <a class="pestana" href="historial.html">Historial</a>
+      <a class="pestana" href="reportes.html">Reportes</a>
+      <a class="pestana" href="respaldo.html">Respaldo</a>
+    </nav>
+    <a class="salir" href="login.html">Salir</a>
+  </header>
+
+  <main class="contenido">
+    <div class="fila-titulo">
+      <h1>En vivo</h1>
+      <p>Así está tu equipo en este momento.</p>
+    </div>
+
+    <!-- AVISO: todos los números y filas de esta página son de EJEMPLO.
+         Más adelante los llenará js/en-vivo.js con datos del servidor. -->
+
+    <!-- Cuántos agentes hay en cada estado -->
+    <div class="contadores">
+      <div class="tarjeta contador atendiendo"><span>Atendiendo</span><strong>2</strong></div>
+      <div class="tarjeta contador disponible"><span>Disponibles</span><strong>1</strong></div>
+      <div class="tarjeta contador pausado"><span>En pausa</span><strong>1</strong></div>
+      <div class="tarjeta contador desconectado"><span>Desconectados</span><strong>1</strong></div>
+    </div>
+
+    <!-- Agentes -->
+    <section>
+      <div class="encabezado-seccion">
+        <div class="titulo-con-filtro">
+          <h2>Agentes</h2>
+          <div class="filtro" role="group" aria-label="Filtrar agentes">
+            <button type="button" aria-pressed="true">Activos</button>
+            <button type="button" aria-pressed="false">Inactivos</button>
+          </div>
+        </div>
+        <button class="boton" type="button">+ Agregar agente</button>
+      </div>
+
+      <div class="tabla-contenedor">
+        <table>
+          <thead>
+            <tr>
+              <th>No. empleado</th>
+              <th>Agente</th>
+              <th>Estado</th>
+              <th>Conversación</th>
+              <th>Tiempo</th>
+              <th class="acciones">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1002</td>
+              <td>Ana Torres</td>
+              <td><span class="estado atendiendo">Atendiendo</span></td>
+              <td>Laura Méndez</td>
+              <td>00:12:48</td>
+              <td class="acciones">
+                <button class="boton-icono" type="button" aria-label="Editar agente">✎</button>
+                <button class="boton-icono" type="button" aria-label="Eliminar agente">🗑</button>
+              </td>
+            </tr>
+            <tr>
+              <td>1005</td>
+              <td>Luis Ramírez</td>
+              <td><span class="estado atendiendo">Atendiendo</span></td>
+              <td>Carlos Peña</td>
+              <td>00:04:05</td>
+              <td class="acciones">
+                <button class="boton-icono" type="button" aria-label="Editar agente">✎</button>
+                <button class="boton-icono" type="button" aria-label="Eliminar agente">🗑</button>
+              </td>
+            </tr>
+            <tr>
+              <td>1007</td>
+              <td>Pedro Sánchez</td>
+              <td><span class="estado disponible">Disponible</span></td>
+              <td>—</td>
+              <td>—</td>
+              <td class="acciones">
+                <button class="boton-icono" type="button" aria-label="Editar agente">✎</button>
+                <button class="boton-icono" type="button" aria-label="Eliminar agente">🗑</button>
+              </td>
+            </tr>
+            <tr>
+              <td>1012</td>
+              <td>María Gómez</td>
+              <td><span class="estado pausado">En pausa</span></td>
+              <td>—</td>
+              <td>—</td>
+              <td class="acciones">
+                <button class="boton-icono" type="button" aria-label="Editar agente">✎</button>
+                <button class="boton-icono" type="button" aria-label="Eliminar agente">🗑</button>
+              </td>
+            </tr>
+            <tr>
+              <td>1015</td>
+              <td>Daniel Castro</td>
+              <td><span class="estado desconectado">Desconectado</span></td>
+              <td>—</td>
+              <td>—</td>
+              <td class="acciones">
+                <button class="boton-icono" type="button" aria-label="Editar agente">✎</button>
+                <button class="boton-icono" type="button" aria-label="Eliminar agente">🗑</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Solicitudes de ayuda -->
+    <section>
+      <h2>Piden ayuda</h2>
+      <div class="tabla-contenedor">
+        <table>
+          <thead>
+            <tr>
+              <th>Agente</th>
+              <th>Conversación</th>
+              <th>Desde</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Ana Torres</td>
+              <td>Laura Méndez</td>
+              <td>hace 3 min</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Dos agentes en el mismo chat -->
+    <section>
+      <h2>Chats duplicados</h2>
+      <div class="tarjeta">
+        <p class="vacio">No hay dos agentes en el mismo chat.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
