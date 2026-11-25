@@ -106,8 +106,9 @@ escriben** en el mismo chat (cambio del 25/11/2026, ver ADR-003):
 }
 ```
 
-3. El panel de cada uno muestra *"Luis Ramírez también está escribiendo en
-   "Carlos Peña""* con los botones **Tomar** y **Ceder**.
+3. A cada uno le aparece una **ventana al centro de WhatsApp** (oscurece la
+   página para que no se pase por alto): *"Luis Ramírez también está escribiendo
+   en "Carlos Peña""*, con los botones **Tomar** y **Ceder**.
 4. Al presionar uno, se le quita el aviso a quien eligió y la extensión manda
    `CHAT_DECISION`. El servidor lo registra (`chat_take` o `chat_yield`) y avisa
    a los demás involucrados:
@@ -117,7 +118,8 @@ escriben** en el mismo chat (cambio del 25/11/2026, ver ADR-003):
   "agent": { "id": "Luis-...", "name": "Luis Ramírez" }, "decision": "yield", "at": 1760000000000 }
 ```
 
-   Ellos ven *"Luis Ramírez te cedió el chat"* o *"Luis Ramírez tomó el chat"*.
+   Ellos ven, en la misma ventana al centro, *"Luis Ramírez te cedió el chat"*
+   o *"Luis Ramírez tomó el chat"*, con el botón **Entendido**.
 
 Tomar o ceder es un **acuerdo entre agentes**: la extensión no puede sacar a
 nadie de un chat de WhatsApp. La comparación de contactos ignora mayúsculas,

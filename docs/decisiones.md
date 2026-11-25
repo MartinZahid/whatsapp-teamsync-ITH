@@ -80,8 +80,10 @@ como duplicidad, y el aviso solo informaba.
 - Es duplicidad cuando **los dos agentes escribieron** en el mismo chat. Abrirlo
   no cuenta.
 - El aviso llega **solo a los agentes involucrados**, no a todo el equipo.
-- El aviso trae **Tomar** y **Ceder**. A quien elige se le quita el aviso; al
-  otro le llega "Ana tomó el chat" o "Luis te cedió el chat".
+- El aviso es una **ventana al centro de WhatsApp** que oscurece la página (para
+  que no se pase por alto) con **Tomar** y **Ceder**. A quien elige se le quita;
+  al otro le aparece, en la misma ventana, "Ana tomó el chat" o "Luis te cedió
+  el chat" con el botón **Entendido**.
 - En la bitácora: `duplicate_alert` + `event_participants` (igual que antes) y
   dos tipos de evento nuevos, `chat_take` y `chat_yield` (`status_ref` NULL). No
   cambia el esquema: `events.type` es texto.

@@ -36,5 +36,5 @@ export function chatDecisionText(agent: string, decision: 'take' | 'yield', cont
   return decision === 'take' ? `${agent} tomó el chat "${contact}"` : `${agent} te cedió el chat "${contact}"`
 }
 
-// Cuánto tiempo se muestra un aviso informativo (sin botones).
+// Cuánto tiempo se muestra el aviso de duplicidad en el popup.
 export const ALERT_MS = 8000
