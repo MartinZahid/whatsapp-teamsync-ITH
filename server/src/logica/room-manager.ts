@@ -28,7 +28,8 @@ import { APP_VERSION } from '../../../shared/version.js'
 import { BitacoraNula, type Bitacora } from '../datos/bitacora.js'
 
 // Tiempo sin señal tras el cual un agente se considera desconectado (RN-04).
-const HEARTBEAT_TIMEOUT_MS = 60000
+// La extensión manda señal cada 5 s mientras WhatsApp está abierto.
+const HEARTBEAT_TIMEOUT_MS = 15000
 
 // `Map<clave, valor>` = diccionario: busca por clave en tiempo constante.
 // Aquí la clave es el id interno del agente.

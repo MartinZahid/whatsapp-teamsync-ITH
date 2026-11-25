@@ -32,7 +32,7 @@ motivo de la desconexión.
 | `AVAILABLE` | `agent` | El agente queda disponible. |
 | `PAUSED` | `agent`, `reason?` | El agente pausa su atención. |
 | `OFFLINE` | `agent` | El agente se marca desconectado. |
-| `HEARTBEAT` | `agent` | Señal de actividad (cada 30 s). |
+| `HEARTBEAT` | `agent` | Señal de actividad (cada 5 s, solo mientras WhatsApp está abierto). |
 | `HELP_REQUEST` | `agent`, `requesting` | Solicita ayuda (`true`) o la cancela (`false`) sin cambiar de estado. |
 | `WRITING` | `agent`, `contact` | El agente escribió en el chat que tiene abierto. La extensión lo manda **una vez por chat**. |
 
@@ -70,9 +70,17 @@ Cada agente de la presencia (`agents`) incluye, entre otros campos, `requesting`
 
 ## Heartbeat
 
-- El cliente envía `HEARTBEAT` cada 30 segundos.
-- El servidor revisa cada 30 segundos y marca como `offline` a cualquier agente
-  que lleve más de 60 segundos sin dar señal.
+- El cliente envía `HEARTBEAT` cada 5 segundos, **solo mientras haya una
+  pestaña de WhatsApp abierta**. Si se cierra WhatsApp, se cierra Chrome, el
+  equipo hiberna o se va el internet, deja de llegar la señal.
+- El servidor revisa cada 5 segundos y marca como `offline` a cualquier agente
+  que lleve más de 15 segundos sin dar señal (en la práctica, entre 15 y 20 s).
+- Recargar WhatsApp no corta la atención: la extensión no manda nada mientras
+  la página se vuelve a abrir, y el chat sigue siendo el mismo.
+- Si el servidor ya lo marcó `offline` con WhatsApp cerrado, la extensión olvida
+  el chat; al volver a abrir WhatsApp manda su estado real.
+- Sin conexión, el popup no muestra la última lista guardada (todos aparecen
+  Desconectados).
 - Cuando se cierra la conexión, el agente también se marca como `offline`.
 - Si el servidor marcó `offline` a un agente cuyo socket sigue abierto y vuelve a
   recibir su heartbeat, la extensión detecta en `PRESENCE_UPDATE` que su estado

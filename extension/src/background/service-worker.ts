@@ -1,9 +1,14 @@
 // Service worker: mantiene la conexión WebSocket con el servidor, envía el
 // heartbeat y difunde el estado a las interfaces (popup, opciones y panel).
 //
+// Heartbeat: cada 5 s, SOLO mientras haya una pestaña de WhatsApp abierta
+// (cada panel abre un "port" con este worker). Si se cierra WhatsApp, se
+// cierra Chrome o el equipo hiberna, deja de llegar la señal y el servidor
+// marca al agente Desconectado a los 15 s.
+//
 // Nota sobre Manifest V3: Chrome puede suspender este worker cuando está
-// inactivo. Por eso el heartbeat y la reconexión también se apoyan en
-// chrome.alarms, que despiertan al worker cada 30 segundos.
+// inactivo. Por eso la reconexión también se apoya en chrome.alarms, que
+// despiertan al worker cada 30 segundos.
 
 import type { Agent, AgentStatus, ClientToServerMessage, ServerToClientMessage } from '@shared/types'
 import {
@@ -24,6 +29,7 @@ import {
 import type { AppState, SwEvent, UiRequest } from '../lib/protocol'
 
 const HEARTBEAT_ALARM = 'wts-tick'
+const HEARTBEAT_MS = 5000
 const TICK_MINUTES = 0.5
 const MAX_ATTEMPTS = 10
 const BADGE_MS = 8000
@@ -116,8 +122,15 @@ function connect(): void {
     attempts = 0
     escritoEn = null // conexión nueva: el servidor ya no recuerda que escribió
     // El primer mensaje (el estado real) identifica al agente en el servidor.
-    applyStatus()
-    if (requesting) send({ type: 'HELP_REQUEST', agent: config.name, requesting: true })
+    // Si el panel de WhatsApp aún no se enganchó (tarda ~1.5 s tras reiniciarse
+    // este worker), se espera un poco para no marcarlo Desconectado un instante.
+    const identificarse = (): void => {
+      if (socket !== ws) return
+      applyStatus()
+      if (requesting) send({ type: 'HELP_REQUEST', agent: config.name, requesting: true })
+    }
+    if (ports.size > 0) identificarse()
+    else setTimeout(identificarse, 2500)
     void setConnection('connected')
   })
 
@@ -181,8 +194,14 @@ function send(message: ClientToServerMessage): void {
 // Estado que de verdad se manda al servidor: "Atendiendo" solo si hay un chat
 // abierto (así nunca se manda un contacto inventado como "sin chat").
 function effectiveStatus(): AgentStatus {
+  if (ports.size === 0) return 'offline' // WhatsApp no está abierto
   return desiredStatus === 'attending' && !currentContact ? 'available' : desiredStatus
 }
+
+// Señal de vida cada 5 s, solo con WhatsApp abierto.
+setInterval(() => {
+  if (ports.size > 0) send({ type: 'HEARTBEAT', agent: config.name })
+}, HEARTBEAT_MS)
 
 function applyStatus(): void {
   const agent = config.name
@@ -207,6 +226,17 @@ function applyStatus(): void {
 function resyncIfNeeded(): void {
   if (!config.name || socket?.readyState !== WebSocket.OPEN) return
   const self = agents.find((agent) => agent.name === config.name)
+  // WhatsApp cerrado y el servidor ya nos marcó Desconectado: se olvida el
+  // chat, para no reaparecer "Atendiendo" un chat viejo al volver a abrirlo.
+  if (ports.size === 0) {
+    if (self?.status === 'offline' && currentContact) {
+      currentContact = null
+      void saveCurrentContact(null)
+    }
+    // Sin WhatsApp no se manda nada: el servidor lo marca Desconectado a los
+    // 15 s. Así, recargar WhatsApp no corta la atención.
+    return
+  }
   if (self?.status !== effectiveStatus()) applyStatus()
   // Al pasar a Desconectado el servidor borra la ayuda pendiente; si aquí
   // sigue activa, se vuelve a pedir para que popup, panel y servidor coincidan.
@@ -389,6 +419,8 @@ chrome.runtime.onConnect.addListener((port) => {
   ports.add(port)
   port.onDisconnect.addListener(() => ports.delete(port))
   ready.then(() => {
+    // Se abrió WhatsApp: si el servidor nos ve distinto, se manda el estado real.
+    if (ports.size === 1) resyncIfNeeded()
     try {
       port.postMessage({ type: 'STATE', state: snapshot() } satisfies SwEvent)
     } catch {
@@ -399,12 +431,10 @@ chrome.runtime.onConnect.addListener((port) => {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== HEARTBEAT_ALARM) return
+  // La alarma ya no manda heartbeat (eso va cada 5 s con WhatsApp abierto);
+  // solo reconecta si la conexión se cayó.
   ready.then(() => {
-    if (socket?.readyState === WebSocket.OPEN) {
-      send({ type: 'HEARTBEAT', agent: config.name })
-    } else if (config.name && !manualDisconnect) {
-      connect()
-    }
+    if (socket?.readyState !== WebSocket.OPEN && config.name && !manualDisconnect) connect()
   })
 })
 

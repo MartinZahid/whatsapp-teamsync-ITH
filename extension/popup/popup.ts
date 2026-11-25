@@ -127,7 +127,8 @@ function renderConnection(status: AppState['connection']['status']): void {
 function applyState(state: AppState): void {
   appState = state
   config = state.config
-  agents = state.agents
+  // Sin conexión, la lista guardada es vieja: todos se muestran Desconectados.
+  agents = state.connection.status === 'connected' ? state.agents : []
 
   if (document.activeElement !== urlInput && urlInput.value !== config.serverUrl) {
     urlInput.value = config.serverUrl
@@ -160,7 +161,7 @@ async function init(): Promise<void> {
   urlInput.value = config.serverUrl
 
   const [presence, connection] = await Promise.all([getPresence(), getConnection()])
-  agents = presence
+  agents = connection.status === 'connected' ? presence : []
   renderAgents()
   renderCurrent(connection.status)
   renderConnection(connection.status)
