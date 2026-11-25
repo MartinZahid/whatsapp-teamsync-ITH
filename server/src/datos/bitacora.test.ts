@@ -146,35 +146,6 @@ test('cambiar de chat borra la marca de "ya escribió"', async () => {
   assert.equal(filas(base, `SELECT count(*) FROM events WHERE type = 'duplicate_alert'`)[0][0], 0)
 })
 
-test('tomar o ceder el chat avisa al otro y queda en la bitácora', async () => {
-  const base = await BaseDeDatos.abrir(null)
-  const sala = salaCon(base, 'Ana', 'Luis')
-  const [a, l] = [conexionQueGuarda(), conexionQueGuarda()]
-  const ana = sala.register(a.ws, 'Ana')!
-  const luis = sala.register(l.ws, 'Luis')!
-  for (const [id, nombre] of [[ana, 'Ana'], [luis, 'Luis']]) {
-    sala.handleMessage(id, { type: 'ATTENDING', agent: nombre, contact: 'Juan' })
-    sala.handleMessage(id, { type: 'WRITING', agent: nombre, contact: 'Juan' })
-  }
-
-  sala.handleMessage(luis, { type: 'CHAT_DECISION', agent: 'Luis', contact: 'Juan', decision: 'yield' })
-  sala.handleMessage(ana, { type: 'CHAT_DECISION', agent: 'Ana', contact: 'Juan', decision: 'take' })
-
-  // A cada uno le llega SOLO lo que decidió el otro.
-  assert.deepEqual(a.de('CHAT_DECISION').map((m) => [(m.agent as { name: string }).name, m.decision]), [['Luis', 'yield']])
-  assert.deepEqual(l.de('CHAT_DECISION').map((m) => [(m.agent as { name: string }).name, m.decision]), [['Ana', 'take']])
-
-  // En la bitácora: ligado a la sesión y al contacto de cada uno, sin cambiar el estado.
-  const decisiones = filas(base, `
-    SELECT agent_name, type, status_ref, session_ref, contact_ref FROM events
-     WHERE type IN ('chat_take', 'chat_yield') ORDER BY id`)
-  assert.deepEqual(decisiones, [['Luis', 'chat_yield', null, 2, 1], ['Ana', 'chat_take', null, 1, 1]])
-
-  // Una decisión inválida se ignora.
-  sala.handleMessage(ana, { type: 'CHAT_DECISION', agent: 'Ana', contact: 'Juan', decision: 'borrar' } as never)
-  assert.equal(filas(base, `SELECT count(*) FROM events WHERE type LIKE 'chat_t%' OR type = 'chat_yield'`)[0][0], 2)
-})
-
 test('solo se conectan los agentes dados de alta en la base', async () => {
   const base = await BaseDeDatos.abrir(null)
   const sala = salaCon(base, 'Ana')

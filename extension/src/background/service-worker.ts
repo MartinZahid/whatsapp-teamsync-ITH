@@ -228,10 +228,6 @@ function handleServerMessage(message: ServerToClientMessage): void {
       emit({ type: 'DUPLICATE', contact: message.contact, agents: message.agents })
       flashBadge()
       break
-    case 'CHAT_DECISION':
-      // Otro agente del aviso tomó o cedió el chat.
-      emit({ type: 'CHAT_DECISION', contact: message.contact, agent: message.agent.name, decision: message.decision })
-      break
     case 'ERROR':
       if (message.code === 'REPLACED') {
         // Otro navegador tomó este agente: no reintentamos, o se tumbarían en bucle.
@@ -365,9 +361,6 @@ function handleUiRequest(
       return { ok: true }
     case 'WRITING':
       notifyWriting()
-      return { ok: true }
-    case 'CHAT_DECISION':
-      send({ type: 'CHAT_DECISION', agent: config.name, contact: message.contact, decision: message.decision })
       return { ok: true }
     case 'CONTACT_CHANGED':
       void isActiveTab(sender?.tab?.id).then((active) => {

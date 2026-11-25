@@ -6,10 +6,10 @@
 //
 // El aspecto reproduce el diseño original del prototipo (Whatsapp-teamSync).
 
-import type { AgentStatus, ChatDecision } from '@shared/types'
+import type { AgentStatus } from '@shared/types'
 import { STATUS_COLORS, STATUS_LABELS } from '@shared/types'
 import { getPanelCollapsed, savePanelCollapsed, type ConnectionState } from '../lib/storage'
-import { CONNECTION_LABELS, chatDecisionText, initials, writingConflictText } from '../lib/ui'
+import { CONNECTION_LABELS, attendingConflictText, initials } from '../lib/ui'
 
 type Connection = ConnectionState['status']
 
@@ -26,18 +26,14 @@ export interface PanelAgent {
 export interface PanelActions {
   onPause?: () => void
   onHelp?: () => void
-  // Botones del aviso de duplicidad (RN-07).
-  onDecision?: (contact: string, decision: ChatDecision) => void
 }
 
 // Lo que devuelve `mountPanel` para poder actualizarlo desde fuera.
 export interface Panel {
   render: (agents: PanelAgent[], selfName: string, connection: Connection) => void
-  // Ventana al centro con Tomar / Ceder; se queda hasta que elijan (RN-07).
+  // Ventana al centro: "Luis también está atendiendo a ..." (RN-07).
   // `others` = los OTROS agentes que escribieron en el chat.
   showDuplicate: (contact: string, others: string[]) => void
-  // Ventana al centro: "Ana tomó el chat", con el botón Entendido.
-  showDecision: (agent: string, decision: ChatDecision, contact: string) => void
   hideAlert: () => void
   setCollapsed: (collapsed: boolean) => void
   destroy: () => void
@@ -165,7 +161,6 @@ const STYLES = `
     cursor: pointer;
   }
   .dialog-buttons button:hover { background: #f3f4f6; }
-  .dialog-buttons button[hidden] { display: none; }
   .dialog-buttons .primary {
     border-color: #dc2626;
     background: #dc2626;
@@ -452,17 +447,13 @@ export function mountPanel(actions: PanelActions = {}): Panel {
       <div class="dialog-title" id="wts-titulo"></div>
       <div class="dialog-text"></div>
       <div class="dialog-buttons">
-        <button type="button" class="primary" data-accion="take">Tomar</button>
-        <button type="button" data-accion="yield">Ceder</button>
-        <button type="button" class="primary" data-accion="ok">Entendido</button>
+        <button type="button" class="primary">Entendido</button>
       </div>
     </div>`
   shadow.appendChild(overlay)
   const dialogTitle = overlay.querySelector('.dialog-title') as HTMLDivElement
   const dialogText = overlay.querySelector('.dialog-text') as HTMLDivElement
-  const takeButton = overlay.querySelector('[data-accion="take"]') as HTMLButtonElement
-  const yieldButton = overlay.querySelector('[data-accion="yield"]') as HTMLButtonElement
-  const okButton = overlay.querySelector('[data-accion="ok"]') as HTMLButtonElement
+  const okButton = overlay.querySelector('.dialog-buttons button') as HTMLButtonElement
 
   const list = document.createElement('ul')
   list.className = 'list'
@@ -656,43 +647,17 @@ export function mountPanel(actions: PanelActions = {}): Panel {
     updateFooter()
   }
 
-  // Chat del aviso de duplicidad que está en pantalla (para Tomar / Ceder).
-  let alertContact: string | null = null
-
-  // Muestra la ventana. `conDecision` = botones Tomar / Ceder; si no, Entendido.
-  const openDialog = (title: string, text: string, conDecision: boolean): void => {
-    dialogTitle.textContent = title
-    dialogText.textContent = text
-    takeButton.hidden = !conDecision
-    yieldButton.hidden = !conDecision
-    okButton.hidden = conDecision
-    overlay.hidden = false
-    ;(conDecision ? takeButton : okButton).focus()
-  }
-
   const hideAlert = (): void => {
-    alertContact = null
     overlay.hidden = true
   }
 
-  // Otro agente también escribe en este chat: hay que elegir Tomar o Ceder.
+  // Otro agente también escribe en este chat: ventana al centro con Entendido.
   const showDuplicate = (contact: string, others: string[]): void => {
-    alertContact = contact
-    openDialog('Chat duplicado', writingConflictText(contact, others), true)
+    dialogTitle.textContent = 'Chat duplicado'
+    dialogText.textContent = attendingConflictText(contact, others)
+    overlay.hidden = false
+    okButton.focus()
   }
-
-  // El otro agente ya eligió: "Luis Ramírez te cedió el chat".
-  const showDecision = (agent: string, decision: ChatDecision, contact: string): void => {
-    alertContact = null
-    openDialog(decision === 'take' ? 'Tomaron el chat' : 'Te cedieron el chat', chatDecisionText(agent, decision, contact), false)
-  }
-
-  const decide = (decision: ChatDecision): void => {
-    if (alertContact) actions.onDecision?.(alertContact, decision)
-    hideAlert() // a quien elige se le quita el aviso
-  }
-  takeButton.addEventListener('click', () => decide('take'))
-  yieldButton.addEventListener('click', () => decide('yield'))
   okButton.addEventListener('click', hideAlert)
 
   const setCollapsed = (value: boolean): void => {
@@ -705,5 +670,5 @@ export function mountPanel(actions: PanelActions = {}): Panel {
     host.remove()
   }
 
-  return { render, showDuplicate, showDecision, hideAlert, setCollapsed, destroy }
+  return { render, showDuplicate, hideAlert, setCollapsed, destroy }
 }

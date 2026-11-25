@@ -29,7 +29,6 @@ y la cierra; la extensión que recibe `REPLACED` no intenta reconectarse.
 | `HEARTBEAT` | `agent` | Señal de actividad (cada 30 s). |
 | `HELP_REQUEST` | `agent`, `requesting` | Solicita ayuda (`true`) o la cancela (`false`) sin cambiar de estado. |
 | `WRITING` | `agent`, `contact` | El agente escribió en el chat que tiene abierto. La extensión lo manda **una vez por chat**. |
-| `CHAT_DECISION` | `agent`, `contact`, `decision` | Respuesta al aviso de duplicidad: `take` (tomar) o `yield` (ceder). |
 
 ## Mensajes del servidor al cliente
 
@@ -39,7 +38,6 @@ y la cierra; la extensión que recibe `REPLACED` no intenta reconectarse.
 | `SERVER_INFO` | `version`, `agents` | Estado inicial tras registrarse. |
 | `PRESENCE_UPDATE` | `agents` | Lista actualizada de agentes. |
 | `DUPLICATE_ALERT` | `contact`, `agents`, `at` | Dos o más agentes **escribieron** en el mismo chat. Solo lo reciben ellos. |
-| `CHAT_DECISION` | `contact`, `agent`, `decision`, `at` | Otro agente del aviso tomó o cedió el chat. |
 | `ERROR` | `code`, `message` | Error: `PARSE_ERROR` (no es JSON o no trae `type`), `AUTH_REQUIRED`, `UNKNOWN_AGENT` (el nombre no está dado de alta; la extensión deja de reintentar) o `REPLACED`. |
 
 La baja de agentes ya **no** viaja por el WebSocket (ADR-001): cualquier
@@ -107,21 +105,10 @@ escriben** en el mismo chat (cambio del 25/11/2026, ver ADR-003):
 ```
 
 3. A cada uno le aparece una **ventana al centro de WhatsApp** (oscurece la
-   página para que no se pase por alto): *"Luis Ramírez también está escribiendo
-   en "Carlos Peña""*, con los botones **Tomar** y **Ceder**.
-4. Al presionar uno, se le quita el aviso a quien eligió y la extensión manda
-   `CHAT_DECISION`. El servidor lo registra (`chat_take` o `chat_yield`) y avisa
-   a los demás involucrados:
+   página para que no se pase por alto): *"Luis Ramírez también está atendiendo
+   a "Carlos Peña""*, con el botón **Entendido** para cerrarla. Si el agente
+   cambia de chat, la ventana se cierra sola.
 
-```json
-{ "type": "CHAT_DECISION", "contact": "Carlos Peña",
-  "agent": { "id": "Luis-...", "name": "Luis Ramírez" }, "decision": "yield", "at": 1760000000000 }
-```
-
-   Ellos ven, en la misma ventana al centro, *"Luis Ramírez te cedió el chat"*
-   o *"Luis Ramírez tomó el chat"*, con el botón **Entendido**.
-
-Tomar o ceder es un **acuerdo entre agentes**: la extensión no puede sacar a
-nadie de un chat de WhatsApp. La comparación de contactos ignora mayúsculas,
-espacios al inicio/fin y espacios repetidos. Seguir escribiendo no repite el
-aviso; si uno sale del chat y vuelve, tiene que volver a escribir para contar.
+La comparación de contactos ignora mayúsculas, espacios al inicio/fin y
+espacios repetidos. Seguir escribiendo no repite el aviso; si uno sale del chat
+y vuelve, tiene que volver a escribir para contar.

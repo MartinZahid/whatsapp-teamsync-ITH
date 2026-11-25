@@ -44,11 +44,6 @@ export type ClientToServerMessage =
   | { type: 'HELP_REQUEST'; agent: string; requesting: boolean }
   // El agente empezó a escribir en el chat que tiene abierto (RN-07).
   | { type: 'WRITING'; agent: string; contact: string }
-  // Respuesta al aviso de duplicidad: tomar o ceder el chat.
-  | { type: 'CHAT_DECISION'; agent: string; contact: string; decision: ChatDecision }
-
-// Tomar ('take') o ceder ('yield') un chat en el que escribieron dos agentes.
-export type ChatDecision = 'take' | 'yield'
 
 // --- Mensajes del servidor hacia el cliente (extensión) ---
 
@@ -58,15 +53,6 @@ export interface DuplicateAlertMessage {
   type: 'DUPLICATE_ALERT'
   contact: string
   agents: Array<{ id: string; name: string }>
-  at: number
-}
-
-// Otro agente del aviso de duplicidad tomó o cedió el chat.
-export interface ChatDecisionMessage {
-  type: 'CHAT_DECISION'
-  contact: string
-  agent: { id: string; name: string } // quién decidió
-  decision: ChatDecision
   at: number
 }
 
@@ -81,7 +67,6 @@ export type ServerToClientMessage =
   | { type: 'SERVER_INFO'; version: string; agents: Agent[] }
   | { type: 'PRESENCE_UPDATE'; agents: Agent[] }
   | DuplicateAlertMessage
-  | ChatDecisionMessage
   | { type: 'ERROR'; code: ErrorCode; message: string }
 
 // --- Utilidades compartidas ---

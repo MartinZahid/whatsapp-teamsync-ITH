@@ -25,15 +25,10 @@ export function duplicateText(contact: string, names: string[]): string {
   return `Atención duplicada: "${contact}" (${names.join(', ')})`
 }
 
-// Aviso del panel cuando otro agente también escribe en el mismo chat.
-export function writingConflictText(contact: string, others: string[]): string {
-  const verbo = others.length > 1 ? 'también están escribiendo' : 'también está escribiendo'
-  return `${others.join(', ')} ${verbo} en "${contact}"`
-}
-
-// Lo que ve un agente cuando el otro respondió al aviso.
-export function chatDecisionText(agent: string, decision: 'take' | 'yield', contact: string): string {
-  return decision === 'take' ? `${agent} tomó el chat "${contact}"` : `${agent} te cedió el chat "${contact}"`
+// Aviso de duplicidad en WhatsApp: "Luis Ramírez también está atendiendo a ...".
+export function attendingConflictText(contact: string, others: string[]): string {
+  const verbo = others.length > 1 ? 'también están atendiendo a' : 'también está atendiendo a'
+  return `${others.join(', ')} ${verbo} "${contact}"`
 }
 
 // Cuánto tiempo se muestra el aviso de duplicidad en el popup.

@@ -18,9 +18,7 @@ const panel = mountPanel({
   },
   onHelp: () => {
     send({ type: 'SET_HELP', requesting: !(latest?.requesting ?? false) })
-  },
-  // Tomar o ceder el chat desde el aviso de duplicidad (RN-07).
-  onDecision: (contact, decision) => send({ type: 'CHAT_DECISION', contact, decision })
+  }
 })
 
 // Envía una petición al service worker (popup, opciones y panel usan lo mismo).
@@ -57,7 +55,7 @@ function connectPort(): void {
       // El aviso muestra a los OTROS agentes que escriben en el chat.
       const self = latest?.config.name
       panel.showDuplicate(event.contact, event.agents.map((a) => a.name).filter((name) => name !== self))
-    } else if (event.type === 'CHAT_DECISION') panel.showDecision(event.agent, event.decision, event.contact)
+    }
   })
 
   // Si el service worker se suspende, el puerto se cierra: reconectamos.

@@ -11,8 +11,7 @@
 //     3. Al cerrar la pestaña                   -> disconnect()
 //     4. Si deja de dar señal (heartbeat)       -> checkHeartbeats()
 //     5. Duplicidad (RN-07): cuando DOS agentes ESCRIBEN en el mismo chat
-//        -> registrarEscritura() + alertDuplicate(); luego cada uno puede
-//        tomar o ceder el chat -> decidirChat()
+//        -> registrarEscritura() + alertDuplicate()
 //   Cada cambio termina llamando a broadcastPresence(), que reenvía la lista
 //   completa de agentes a TODOS los conectados.
 
@@ -20,7 +19,6 @@ import { WebSocket } from 'ws'
 import {
   Agent,
   AgentStatus,
-  ChatDecision,
   ClientToServerMessage,
   DuplicateAlertMessage,
   ServerToClientMessage,
@@ -162,9 +160,6 @@ export class RoomManager {
         // Solo la primera vez que escribe en este chat se revisa la duplicidad.
         if (this.registrarEscritura(agent, message.contact)) this.alertDuplicate(agent)
         return
-      case 'CHAT_DECISION':
-        this.decidirChat(agent, message.contact, message.decision)
-        return
       case 'AVAILABLE':
         this.setStatus(agent, 'available')
         console.log(`[Servidor] ${agent.name} disponible`)
@@ -277,29 +272,6 @@ export class RoomManager {
     )
     this.bitacora.duplicidad(involucrados)
     for (const a of involucrados) this.sendTo(a.id, alert)
-  }
-
-  // Un agente responde al aviso: toma o cede el chat. Se avisa a los demás
-  // involucrados ("Ana tomó el chat") y queda en la bitácora.
-  private decidirChat(agent: Agent, contact: unknown, decision: unknown): void {
-    if (decision !== 'take' && decision !== 'yield') return
-    if (typeof contact !== 'string' || !agent.contact) return
-    if (normalizeContact(contact) !== normalizeContact(agent.contact)) return
-
-    const others = this.otrosQueEscribieron(agent)
-    console.log(
-      `[Servidor] ${agent.name} ${decision === 'take' ? 'toma' : 'cede'} el chat "${agent.contact}"`
-    )
-    this.bitacora.decisionDeChat(agent, decision as ChatDecision)
-    for (const other of others) {
-      this.sendTo(other.id, {
-        type: 'CHAT_DECISION',
-        contact: agent.contact,
-        agent: { id: agent.id, name: agent.name },
-        decision: decision as ChatDecision,
-        at: Date.now()
-      })
-    }
   }
 
   // Marca al agente como desconectado cuando se cierra SU conexión actual.
