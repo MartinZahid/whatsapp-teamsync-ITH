@@ -6,7 +6,7 @@
 //     · BitacoraSqlite (bitacorasqlite.ts) guarda de verdad.
 //     · BitacoraNula (abajo) no hace nada: sirve con DB_PATH=off y en pruebas.
 
-import type { Agent, AgentStatus } from '../../../shared/types.js'
+import type { Agent, AgentStatus, ChatDecision } from '../../../shared/types.js'
 
 // Un agente dado de alta en la base (lo mínimo que necesita la lógica).
 export interface AgenteRegistrado {
@@ -23,8 +23,11 @@ export interface Bitacora {
   cambioDeEstado(agente: Agent, antes: AgentStatus, chatAntes: string | null, motivo?: string): void
   // Pidió (true) o canceló (false) ayuda. No cambia el estado (RN-03).
   ayuda(agente: Agent, solicita: boolean): void
-  // Dos o más agentes en el mismo chat (RN-07). `agentes[0]` es quien llegó.
+  // Dos o más agentes ESCRIBIERON en el mismo chat (RN-07). `agentes[0]` es
+  // quien escribió al último.
   duplicidad(agentes: Agent[]): void
+  // Respuesta al aviso de duplicidad: tomó o cedió el chat.
+  decisionDeChat(agente: Agent, decision: ChatDecision): void
   // Baja del agente (lógica: la fila se conserva).
   bajaAgente(agente: Agent): void
 }
@@ -37,5 +40,6 @@ export class BitacoraNula implements Bitacora {
   cambioDeEstado(): void {}
   ayuda(): void {}
   duplicidad(): void {}
+  decisionDeChat(): void {}
   bajaAgente(): void {}
 }

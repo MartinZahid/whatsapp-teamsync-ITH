@@ -4,6 +4,7 @@
 import type { AppState, SwEvent, UiRequest } from '../lib/protocol'
 import { getConfig, getConnection, getPresence } from '../lib/storage'
 import { startDetector } from './detector'
+import { vigilarEscritura } from './escritura'
 import { mountPanel } from './panel'
 
 // Último estado recibido; se usa para saber qué pedir al pulsar un botón.
@@ -17,7 +18,9 @@ const panel = mountPanel({
   },
   onHelp: () => {
     send({ type: 'SET_HELP', requesting: !(latest?.requesting ?? false) })
-  }
+  },
+  // Tomar o ceder el chat desde el aviso de duplicidad (RN-07).
+  onDecision: (contact, decision) => send({ type: 'CHAT_DECISION', contact, decision })
 })
 
 // Envía una petición al service worker (popup, opciones y panel usan lo mismo).
@@ -50,7 +53,11 @@ function connectPort(): void {
 
   port.onMessage.addListener((event: SwEvent) => {
     if (event.type === 'STATE') render(event.state)
-    else if (event.type === 'DUPLICATE') panel.showDuplicate(event.contact, event.agents.map((a) => a.name))
+    else if (event.type === 'DUPLICATE') {
+      // El aviso muestra a los OTROS agentes que escriben en el chat.
+      const self = latest?.config.name
+      panel.showDuplicate(event.contact, event.agents.map((a) => a.name).filter((name) => name !== self))
+    } else if (event.type === 'CHAT_DECISION') panel.showDecision(event.agent, event.decision, event.contact)
   })
 
   // Si el service worker se suspende, el puerto se cierra: reconectamos.
@@ -63,9 +70,16 @@ function connectPort(): void {
 void renderSaved()
 connectPort()
 
+// Avisa al service worker cuando el agente escribe en el chat abierto.
+const escritura = vigilarEscritura(() => send({ type: 'WRITING' }))
+
 // Avisa al service worker cada vez que se abre, cambia o se cierra el chat.
 const detector = startDetector({
-  onChange: (contact) => send({ type: 'CONTACT_CHANGED', contact })
+  onChange: (contact) => {
+    escritura.reiniciar()
+    panel.hideAlert() // el aviso era del chat anterior
+    send({ type: 'CONTACT_CHANGED', contact })
+  }
 })
 
 // Con varias pestañas de WhatsApp abiertas, solo debe mandar la que se está

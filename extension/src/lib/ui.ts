@@ -25,5 +25,16 @@ export function duplicateText(contact: string, names: string[]): string {
   return `Atención duplicada: "${contact}" (${names.join(', ')})`
 }
 
-// Cuánto tiempo se muestra el aviso de duplicidad.
+// Aviso del panel cuando otro agente también escribe en el mismo chat.
+export function writingConflictText(contact: string, others: string[]): string {
+  const verbo = others.length > 1 ? 'también están escribiendo' : 'también está escribiendo'
+  return `${others.join(', ')} ${verbo} en "${contact}"`
+}
+
+// Lo que ve un agente cuando el otro respondió al aviso.
+export function chatDecisionText(agent: string, decision: 'take' | 'yield', contact: string): string {
+  return decision === 'take' ? `${agent} tomó el chat "${contact}"` : `${agent} te cedió el chat "${contact}"`
+}
+
+// Cuánto tiempo se muestra un aviso informativo (sin botones).
 export const ALERT_MS = 8000

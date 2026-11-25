@@ -6,10 +6,10 @@
 //
 // El aspecto reproduce el diseño original del prototipo (Whatsapp-teamSync).
 
-import type { AgentStatus } from '@shared/types'
+import type { AgentStatus, ChatDecision } from '@shared/types'
 import { STATUS_COLORS, STATUS_LABELS } from '@shared/types'
 import { getPanelCollapsed, savePanelCollapsed, type ConnectionState } from '../lib/storage'
-import { ALERT_MS, CONNECTION_LABELS, duplicateText, initials } from '../lib/ui'
+import { ALERT_MS, CONNECTION_LABELS, chatDecisionText, initials, writingConflictText } from '../lib/ui'
 
 type Connection = ConnectionState['status']
 
@@ -26,13 +26,19 @@ export interface PanelAgent {
 export interface PanelActions {
   onPause?: () => void
   onHelp?: () => void
+  // Botones del aviso de duplicidad (RN-07).
+  onDecision?: (contact: string, decision: ChatDecision) => void
 }
 
 // Lo que devuelve `mountPanel` para poder actualizarlo desde fuera.
 export interface Panel {
   render: (agents: PanelAgent[], selfName: string, connection: Connection) => void
-  // Muestra unos segundos el aviso de atención duplicada (RN-07).
-  showDuplicate: (contact: string, names: string[]) => void
+  // Aviso de duplicidad con Tomar / Ceder; se queda hasta que elijan (RN-07).
+  // `others` = los OTROS agentes que escribieron en el chat.
+  showDuplicate: (contact: string, others: string[]) => void
+  // Otro agente respondió: "Ana tomó el chat". Se va solo a los pocos segundos.
+  showDecision: (agent: string, decision: ChatDecision, contact: string) => void
+  hideAlert: () => void
   setCollapsed: (collapsed: boolean) => void
   destroy: () => void
 }
@@ -108,6 +114,31 @@ const STYLES = `
     font-weight: 600;
   }
   .alert[hidden] { display: none; }
+  .alert-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .alert-actions[hidden] { display: none; }
+  .alert-actions button {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #991b1b;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .alert-actions button:hover { background: #fee2e2; }
+  .alert-actions .take {
+    border-color: #dc2626;
+    background: #dc2626;
+    color: #ffffff;
+  }
+  .alert-actions .take:hover { background: #b91c1c; }
   .list {
     list-style: none;
     max-height: 400px;
@@ -377,9 +408,22 @@ export function mountPanel(actions: PanelActions = {}): Panel {
   toggle.innerHTML = CHEVRON_RIGHT
   head.appendChild(toggle)
 
+  // Aviso: un texto y, solo para la duplicidad, los botones Tomar / Ceder.
   const alertBox = document.createElement('div')
   alertBox.className = 'alert'
   alertBox.hidden = true
+  const alertText = document.createElement('div')
+  const alertActions = document.createElement('div')
+  alertActions.className = 'alert-actions'
+  const takeButton = document.createElement('button')
+  takeButton.type = 'button'
+  takeButton.className = 'take'
+  takeButton.textContent = 'Tomar'
+  const yieldButton = document.createElement('button')
+  yieldButton.type = 'button'
+  yieldButton.textContent = 'Ceder'
+  alertActions.append(takeButton, yieldButton)
+  alertBox.append(alertText, alertActions)
   panel.appendChild(alertBox)
 
   const list = document.createElement('ul')
@@ -575,14 +619,45 @@ export function mountPanel(actions: PanelActions = {}): Panel {
   }
 
   let alertTimer: ReturnType<typeof setTimeout> | null = null
-  const showDuplicate = (contact: string, names: string[]): void => {
-    alertBox.textContent = duplicateText(contact, names)
+  // Chat del aviso de duplicidad que está en pantalla (para los botones).
+  let alertContact: string | null = null
+
+  const hideAlert = (): void => {
+    if (alertTimer) clearTimeout(alertTimer)
+    alertTimer = null
+    alertContact = null
+    alertBox.hidden = true
+  }
+
+  // Aviso con botones: se queda hasta que el agente elija Tomar o Ceder.
+  const showDuplicate = (contact: string, others: string[]): void => {
+    if (alertTimer) clearTimeout(alertTimer)
+    alertTimer = null
+    alertContact = contact
+    alertText.textContent = writingConflictText(contact, others)
+    alertActions.hidden = false
     alertBox.hidden = false
     // Si está colapsado, lo abrimos para que el aviso se vea.
     applyCollapsed(false)
-    if (alertTimer) clearTimeout(alertTimer)
-    alertTimer = setTimeout(() => (alertBox.hidden = true), ALERT_MS)
   }
+
+  // Aviso informativo (sin botones): se quita solo a los pocos segundos.
+  const showDecision = (agent: string, decision: ChatDecision, contact: string): void => {
+    if (alertTimer) clearTimeout(alertTimer)
+    alertContact = null
+    alertText.textContent = chatDecisionText(agent, decision, contact)
+    alertActions.hidden = true
+    alertBox.hidden = false
+    applyCollapsed(false)
+    alertTimer = setTimeout(hideAlert, ALERT_MS)
+  }
+
+  const decide = (decision: ChatDecision): void => {
+    if (alertContact) actions.onDecision?.(alertContact, decision)
+    hideAlert() // a quien elige se le quita el aviso
+  }
+  takeButton.addEventListener('click', () => decide('take'))
+  yieldButton.addEventListener('click', () => decide('yield'))
 
   const setCollapsed = (value: boolean): void => {
     applyCollapsed(value)
@@ -595,5 +670,5 @@ export function mountPanel(actions: PanelActions = {}): Panel {
     host.remove()
   }
 
-  return { render, showDuplicate, setCollapsed, destroy }
+  return { render, showDuplicate, showDecision, hideAlert, setCollapsed, destroy }
 }

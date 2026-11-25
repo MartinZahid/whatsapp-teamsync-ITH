@@ -1,4 +1,4 @@
-import type { Agent, AgentStatus } from '@shared/types'
+import type { Agent, AgentStatus, ChatDecision } from '@shared/types'
 import type { AgentConfig, ConnectionState } from './storage'
 
 // Estado completo que el service worker comparte con el popup y el panel.
@@ -19,8 +19,14 @@ export type UiRequest =
   | { type: 'SET_STATUS'; status: AgentStatus }
   | { type: 'SET_HELP'; requesting: boolean }
   | { type: 'CONTACT_CHANGED'; contact: string | null }
+  // El agente escribió en la caja de mensaje del chat abierto (RN-07).
+  | { type: 'WRITING' }
+  // Botones del aviso de duplicidad: tomar o ceder el chat.
+  | { type: 'CHAT_DECISION'; contact: string; decision: ChatDecision }
 
 // Mensajes que el service worker difunde a las interfaces.
 export type SwEvent =
   | { type: 'STATE'; state: AppState }
   | { type: 'DUPLICATE'; contact: string; agents: Array<{ id: string; name: string }> }
+  // Otro agente del aviso tomó o cedió el chat.
+  | { type: 'CHAT_DECISION'; contact: string; agent: string; decision: ChatDecision }

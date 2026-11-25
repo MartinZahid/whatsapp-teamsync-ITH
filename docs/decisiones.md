@@ -68,3 +68,31 @@ WhatsApp Web. Los chats no agendados aparecen como número
 - Leer el identificador interno del chat de WhatsApp (número con `@c.us`):
   lo resolvería de raíz, pero cambia la extensión y el protocolo y depende de
   la estructura de la página de WhatsApp Web.
+
+## ADR-003: la duplicidad cuenta al escribir, con Tomar / Ceder (25/11/2026)
+
+**Contexto.** RN-07 avisaba en cuanto dos agentes tenían abierto el mismo chat.
+Eso daba falsas alarmas: un agente que solo se asomaba a un chat ya contaba
+como duplicidad, y el aviso solo informaba.
+
+**Decisión.**
+
+- Es duplicidad cuando **los dos agentes escribieron** en el mismo chat. Abrirlo
+  no cuenta.
+- El aviso llega **solo a los agentes involucrados**, no a todo el equipo.
+- El aviso trae **Tomar** y **Ceder**. A quien elige se le quita el aviso; al
+  otro le llega "Ana tomó el chat" o "Luis te cedió el chat".
+- En la bitácora: `duplicate_alert` + `event_participants` (igual que antes) y
+  dos tipos de evento nuevos, `chat_take` y `chat_yield` (`status_ref` NULL). No
+  cambia el esquema: `events.type` es texto.
+
+**Consecuencias.**
+
+- Los reportes de duplicidad cuentan menos casos (solo los conflictos reales).
+- Tomar o ceder es un acuerdo entre agentes: la extensión no puede cerrar un
+  chat de WhatsApp.
+- Detectar que se escribe depende del HTML de WhatsApp Web (selector de la caja
+  de mensaje en `extension/src/content/escritura.ts`): hay que comprobarlo con
+  WhatsApp real y ajustarlo si WhatsApp cambia.
+- Cambia RN-07 del reporte preliminar: consultarlo con el asesor.
+

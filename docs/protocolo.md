@@ -28,6 +28,8 @@ y la cierra; la extensión que recibe `REPLACED` no intenta reconectarse.
 | `OFFLINE` | `agent` | El agente se marca desconectado. |
 | `HEARTBEAT` | `agent` | Señal de actividad (cada 30 s). |
 | `HELP_REQUEST` | `agent`, `requesting` | Solicita ayuda (`true`) o la cancela (`false`) sin cambiar de estado. |
+| `WRITING` | `agent`, `contact` | El agente escribió en el chat que tiene abierto. La extensión lo manda **una vez por chat**. |
+| `CHAT_DECISION` | `agent`, `contact`, `decision` | Respuesta al aviso de duplicidad: `take` (tomar) o `yield` (ceder). |
 
 ## Mensajes del servidor al cliente
 
@@ -36,7 +38,8 @@ y la cierra; la extensión que recibe `REPLACED` no intenta reconectarse.
 | `WELCOME` | `message`, `protocol` | Bienvenida al conectar. |
 | `SERVER_INFO` | `version`, `agents` | Estado inicial tras registrarse. |
 | `PRESENCE_UPDATE` | `agents` | Lista actualizada de agentes. |
-| `DUPLICATE_ALERT` | `contact`, `agents`, `at` | Dos o más agentes atienden el mismo contacto. |
+| `DUPLICATE_ALERT` | `contact`, `agents`, `at` | Dos o más agentes **escribieron** en el mismo chat. Solo lo reciben ellos. |
+| `CHAT_DECISION` | `contact`, `agent`, `decision`, `at` | Otro agente del aviso tomó o cedió el chat. |
 | `ERROR` | `code`, `message` | Error: `PARSE_ERROR` (no es JSON o no trae `type`), `AUTH_REQUIRED`, `UNKNOWN_AGENT` (el nombre no está dado de alta; la extensión deja de reintentar) o `REPLACED`. |
 
 La baja de agentes ya **no** viaja por el WebSocket (ADR-001): cualquier
@@ -80,23 +83,43 @@ marca se conserva en la reconexión y se limpia cuando el agente pasa a
 
 ## Duplicidad (RN-07)
 
-Cuando un agente pasa a `Atendiendo` y otro agente ya está atendiendo el mismo
-contacto, el servidor envía `DUPLICATE_ALERT` a **todos** los conectados:
+**Abrir un chat ya no es duplicidad.** Cuenta cuando **dos o más agentes
+escriben** en el mismo chat (cambio del 25/11/2026, ver ADR-003):
+
+1. La extensión detecta que el agente teclea en la caja de mensaje de WhatsApp y
+   manda `WRITING` (una sola vez por chat; se reinicia al cambiar de chat, de
+   estado o al reconectarse).
+2. El servidor marca que ese agente escribió en ese chat. Si otro agente que
+   tiene el mismo chat abierto **también escribió**, envía `DUPLICATE_ALERT`
+   **solo a los involucrados** y lo registra en la bitácora (`duplicate_alert`
+   y `event_participants`):
 
 ```json
 {
   "type": "DUPLICATE_ALERT",
-  "contact": "Cliente SUSPIROS",
+  "contact": "Carlos Peña",
   "agents": [
-    { "id": "Luis-...", "name": "Luis" },
-    { "id": "Ana-...", "name": "Ana" }
+    { "id": "Luis-...", "name": "Luis Ramírez" },
+    { "id": "Ana-...", "name": "Ana Torres" }
   ],
   "at": 1760000000000
 }
 ```
 
-La comparación de contactos ignora mayúsculas, espacios al inicio/fin y
-espacios repetidos. La alerta se emite al momento de la coincidencia; no se
-repite mientras los agentes sigan en ese estado (reenviar `ATTENDING` con el
-mismo contacto no vuelve a disparar la alerta). La extensión la muestra en el
-panel flotante de WhatsApp y en el popup.
+3. El panel de cada uno muestra *"Luis Ramírez también está escribiendo en
+   "Carlos Peña""* con los botones **Tomar** y **Ceder**.
+4. Al presionar uno, se le quita el aviso a quien eligió y la extensión manda
+   `CHAT_DECISION`. El servidor lo registra (`chat_take` o `chat_yield`) y avisa
+   a los demás involucrados:
+
+```json
+{ "type": "CHAT_DECISION", "contact": "Carlos Peña",
+  "agent": { "id": "Luis-...", "name": "Luis Ramírez" }, "decision": "yield", "at": 1760000000000 }
+```
+
+   Ellos ven *"Luis Ramírez te cedió el chat"* o *"Luis Ramírez tomó el chat"*.
+
+Tomar o ceder es un **acuerdo entre agentes**: la extensión no puede sacar a
+nadie de un chat de WhatsApp. La comparación de contactos ignora mayúsculas,
+espacios al inicio/fin y espacios repetidos. Seguir escribiendo no repite el
+aviso; si uno sale del chat y vuelve, tiene que volver a escribir para contar.

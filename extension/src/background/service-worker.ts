@@ -34,6 +34,9 @@ let connection: ConnectionState = { status: 'disconnected', updatedAt: Date.now(
 let desiredStatus: AgentStatus = 'available'
 let requesting = false
 let currentContact: string | null = null
+// Chat en el que ya se avisó al servidor que el agente escribió (WRITING).
+// Así se manda UNA vez por chat y no en cada tecla.
+let escritoEn: string | null = null
 
 let socket: WebSocket | null = null
 let attempts = 0
@@ -111,6 +114,7 @@ function connect(): void {
   ws.addEventListener('open', () => {
     if (socket !== ws) return
     attempts = 0
+    escritoEn = null // conexión nueva: el servidor ya no recuerda que escribió
     // El primer mensaje (el estado real) identifica al agente en el servidor.
     applyStatus()
     if (requesting) send({ type: 'HELP_REQUEST', agent: config.name, requesting: true })
@@ -224,6 +228,10 @@ function handleServerMessage(message: ServerToClientMessage): void {
       emit({ type: 'DUPLICATE', contact: message.contact, agents: message.agents })
       flashBadge()
       break
+    case 'CHAT_DECISION':
+      // Otro agente del aviso tomó o cedió el chat.
+      emit({ type: 'CHAT_DECISION', contact: message.contact, agent: message.agent.name, decision: message.decision })
+      break
     case 'ERROR':
       if (message.code === 'REPLACED') {
         // Otro navegador tomó este agente: no reintentamos, o se tumbarían en bucle.
@@ -252,11 +260,21 @@ function flashBadge(): void {
 async function applyStatusChange(status: AgentStatus): Promise<void> {
   // Al reanudar con un chat abierto, el agente vuelve a "Atendiendo" (RN-01).
   desiredStatus = status === 'available' && currentContact ? 'attending' : status
+  escritoEn = null
   // Se guarda el estado REAL: si se guardara 'available' con un chat abierto,
   // al reiniciarse el service worker el agente aparecería Disponible.
   await saveStatus(desiredStatus)
   applyStatus()
   emitState()
+}
+
+// El agente escribió en el chat abierto: se avisa al servidor UNA vez por chat
+// (RN-07: la duplicidad cuenta cuando dos agentes escriben en el mismo chat).
+function notifyWriting(): void {
+  if (!currentContact || effectiveStatus() !== 'attending') return
+  if (escritoEn === currentContact || socket?.readyState !== WebSocket.OPEN) return
+  escritoEn = currentContact
+  send({ type: 'WRITING', agent: config.name, contact: currentContact })
 }
 
 function applyHelp(value: boolean): void {
@@ -266,6 +284,7 @@ function applyHelp(value: boolean): void {
 }
 
 async function applyContact(contact: string | null): Promise<void> {
+  if (contact !== currentContact) escritoEn = null
   currentContact = contact
   await saveCurrentContact(contact)
 
@@ -343,6 +362,12 @@ function handleUiRequest(
       return { ok: true }
     case 'SET_HELP':
       applyHelp(message.requesting)
+      return { ok: true }
+    case 'WRITING':
+      notifyWriting()
+      return { ok: true }
+    case 'CHAT_DECISION':
+      send({ type: 'CHAT_DECISION', agent: config.name, contact: message.contact, decision: message.decision })
       return { ok: true }
     case 'CONTACT_CHANGED':
       void isActiveTab(sender?.tab?.id).then((active) => {

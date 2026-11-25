@@ -12,12 +12,14 @@
 //   ayuda            -> 'help_request' / 'help_cancel' (status_ref NULL)
 //   duplicidad       -> 'duplicate_alert' (status_ref NULL) + una fila en
 //                       event_participants por cada agente, con su sesión
+//   decisionDeChat   -> 'chat_take' / 'chat_yield' (status_ref NULL), ligado
+//                       a la sesión y al contacto del agente
 //   bajaAgente       -> agents.active = 0
 //
 //   Cada llamada es UNA transacción. Si algo falla se avisa en consola y la
 //   presencia en tiempo real sigue funcionando (la base nunca la detiene).
 
-import type { Agent, AgentStatus } from '../../../shared/types.js'
+import type { Agent, AgentStatus, ChatDecision } from '../../../shared/types.js'
 import type { AgenteRegistrado, Bitacora } from './bitacora.js'
 import type { BaseDeDatos } from './conexion.js'
 import { buscarAgentePorNombre, darDeBajaAgente, listarAgentesActivos } from './agentes.js'
@@ -145,6 +147,14 @@ export class BitacoraSqlite implements Bitacora {
           [evento, ra.agente, ra.sesion?.id ?? null]
         )
       }
+    })
+  }
+
+  decisionDeChat(agente: Agent, decision: ChatDecision): void {
+    this.seguro('chat_decision', () => {
+      const r = this.referencias(agente)
+      const tipo = decision === 'take' ? 'chat_take' : 'chat_yield'
+      this.evento(agente, tipo, null, r.sesion?.contacto ?? null, r.sesion?.id ?? null)
     })
   }
 
