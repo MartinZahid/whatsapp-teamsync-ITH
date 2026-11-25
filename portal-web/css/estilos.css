@@ -580,6 +580,12 @@ a.chip {
   color: var(--texto-suave);
 }
 
+/* Error dentro de una ventana (p. ej. "Ya hay un agente activo..."). */
+.ventana .mensaje-error {
+  color: var(--rojo);
+  font-weight: 600;
+}
+
 .ventana-botones {
   display: flex;
   justify-content: flex-end;

@@ -188,6 +188,13 @@ export class RoomManager {
     this.broadcastPresence()
   }
 
+  // Agrega a la presencia un agente recién dado de alta (o reactivado) desde
+  // el portal, como Desconectado, y avisa a todos.
+  agregarAgente(name: string): void {
+    if (this.getAllAgents().some((a) => a.name === name)) return
+    if (this.cargarDeLaBase(name)) this.broadcastPresence()
+  }
+
   // Busca en la base un agente que se dio de alta después de arrancar el
   // servidor (p. ej. desde el dashboard) y lo agrega a la sala como Desconectado.
   private cargarDeLaBase(name: string): Agent | undefined {

@@ -76,8 +76,8 @@
         </button>
       </div>
 
-      <!-- Tabla de activos. Las filas son de ejemplo: las reemplaza js/en-vivo.js.
-           Cada fila guarda sus datos en data-empleado y data-nombre. -->
+      <!-- Tabla de activos. Las filas de abajo son de ejemplo: js/en-vivo.js las
+           reemplaza con los agentes del servidor (cada fila guarda su id en data-id). -->
       <div class="contenedor-tabla" id="tabla-activos">
         <table class="tabla">
           <thead>
@@ -204,6 +204,7 @@
         <label for="agregar-nombre">Nombre del agente</label>
         <input id="agregar-nombre" name="nombre" type="text" required>
       </div>
+      <p class="mensaje-error" hidden></p>
       <div class="ventana-botones">
         <button class="boton boton-secundario" type="submit" value="cancelar" formnovalidate>Cancelar</button>
         <button class="boton" type="submit" value="agregar">Agregar</button>
@@ -225,6 +226,7 @@
         <label for="editar-nombre">Nombre del agente</label>
         <input id="editar-nombre" name="nombre" type="text" required>
       </div>
+      <p class="mensaje-error" hidden></p>
       <div class="ventana-botones">
         <button class="boton boton-secundario" type="submit" value="cancelar" formnovalidate>Cancelar</button>
         <button class="boton" type="submit" value="guardar">Guardar</button>
@@ -241,6 +243,7 @@
         <h2 id="titulo-eliminar">¿Eliminar a <span id="eliminar-nombre">Pedro Sánchez</span>?</h2>
         <p>Ya no podrá conectarse desde la extensión. Pasará a la lista de Inactivos y su historial y reportes se conservan.</p>
       </div>
+      <p class="mensaje-error" hidden></p>
       <div class="ventana-botones">
         <button class="boton boton-secundario" type="submit" value="cancelar">Cancelar</button>
         <button class="boton boton-peligro" type="submit" value="eliminar">Eliminar</button>

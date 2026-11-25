@@ -56,6 +56,23 @@ y, después, el dashboard).
 |---|---|
 | `GET /api/agentes` | `[{ "name": "Ana Torres" }, ...]`: agentes activos de la tabla `agents` (lo usa el popup). `503` si el servidor corre sin base. |
 
+### Gestión de agentes (portal, pestaña En vivo)
+
+El número de empleado se guarda en `agents.agent_id`. Los errores responden
+`{ "error": "mensaje para el usuario" }`. `503` si el servidor corre sin base.
+
+| Ruta | Cuerpo | Respuesta |
+|---|---|---|
+| `GET /api/portal/agentes` | — | `[{ id, empleado, nombre, activo, alta, estado, conversacion, atendiendoDesde }]`: todos los agentes (activos e inactivos) con su estado en vivo. |
+| `POST /api/portal/agentes` | `{ empleado, nombre }` | Alta. `201`; `400` faltan datos; `409` nombre activo o número repetido. |
+| `PUT /api/portal/agentes/:id` | `{ empleado, nombre }` | Editar. `200`; `400`; `404`; `409`. Si estaba conectado se le cierra la conexión y debe volver a elegir su nombre en la extensión. |
+| `DELETE /api/portal/agentes/:id` | — | Baja lógica (pasa a Inactivos, se cierra su sesión). `200`; `404`. |
+| `POST /api/portal/agentes/:id/reactivar` | — | Reactivar. `200`; `404`; `409` si ya hay otro agente activo con ese nombre. |
+
+Los cambios se reflejan al momento en la presencia (extensión y portal) sin
+reiniciar el servidor. Ya no hace falta `npm run agentes` con el servidor
+detenido.
+
 Cada agente de la presencia (`agents`) incluye, entre otros campos, `requesting`
 (`true` cuando pidió ayuda), que es independiente de su estado.
 
