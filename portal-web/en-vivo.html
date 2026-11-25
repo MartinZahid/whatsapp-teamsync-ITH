@@ -4,159 +4,249 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>En vivo · WhatsApp Team Sync</title>
-  <link rel="stylesheet" href="css/comun.css">
-  <link rel="stylesheet" href="css/en-vivo.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/estilos.css">
 </head>
 <body>
-  <!-- Barra con las pestañas: es igual en todas las páginas;
-       solo cambia cuál lleva la clase "activa". -->
+  <!-- Encabezado: igual en todas las pestañas -->
   <header class="barra">
-    <div class="marca">
-      <span class="logo-chico" aria-hidden="true"></span>
-      WhatsApp Team Sync
+    <div class="ancho">
+      <div class="marca">
+        <div class="logo" aria-hidden="true"></div>
+        <span>WhatsApp Team Sync</span>
+      </div>
+      <div class="usuario">
+        <span class="chip"><span id="usuario-nombre">administrador</span> · <strong id="usuario-rol">Gestión</strong></span>
+        <a class="chip" href="login.html" id="salir">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          Salir
+        </a>
+      </div>
     </div>
-    <nav class="pestanas" aria-label="Secciones">
-      <a class="pestana activa" href="en-vivo.html" aria-current="page">En vivo</a>
-      <a class="pestana" href="historial.html">Historial</a>
-      <a class="pestana" href="reportes.html">Reportes</a>
-      <a class="pestana" href="respaldo.html">Respaldo</a>
-    </nav>
-    <a class="salir" href="login.html">Salir</a>
   </header>
 
-  <main class="contenido">
+  <nav class="pestanas" aria-label="Secciones">
+    <div class="ancho">
+      <a href="en-vivo.html" aria-current="page">En vivo</a>
+      <a href="historial.html">Historial</a>
+      <a href="contactos.html">Contactos</a>
+      <a href="reportes.html">Reportes</a>
+      <a href="respaldo.html" class="solo-gestion">Respaldo</a>
+    </div>
+  </nav>
+
+  <!-- ===== En vivo ===== -->
+  <main class="ancho contenido" id="en-vivo">
     <div class="fila-titulo">
-      <h1>En vivo</h1>
-      <p>Así está tu equipo en este momento.</p>
+      <h1>Estado del equipo</h1>
+      <span class="nota" id="ultima-actualizacion">Se actualiza solo · hace 2 s</span>
     </div>
 
-    <!-- AVISO: todos los números y filas de esta página son de EJEMPLO.
-         Más adelante los llenará js/en-vivo.js con datos del servidor. -->
-
-    <!-- Cuántos agentes hay en cada estado -->
-    <div class="contadores">
-      <div class="tarjeta contador atendiendo"><span>Atendiendo</span><strong>2</strong></div>
-      <div class="tarjeta contador disponible"><span>Disponibles</span><strong>1</strong></div>
-      <div class="tarjeta contador pausado"><span>En pausa</span><strong>1</strong></div>
-      <div class="tarjeta contador desconectado"><span>Desconectados</span><strong>1</strong></div>
+    <div class="resumen">
+      <div class="tarjeta-resumen destacada">
+        <span>Conectados</span>
+        <strong id="total-conectados">4</strong>
+      </div>
+      <div class="tarjeta-resumen">
+        <span>Atendiendo</span>
+        <strong class="texto-atendiendo" id="total-atendiendo">2</strong>
+      </div>
+      <div class="tarjeta-resumen">
+        <span>Disponibles</span>
+        <strong class="texto-disponible" id="total-disponibles">1</strong>
+      </div>
+      <div class="tarjeta-resumen">
+        <span>Pausados</span>
+        <strong class="texto-pausado" id="total-pausados">1</strong>
+      </div>
     </div>
 
-    <!-- Agentes -->
     <section>
-      <div class="encabezado-seccion">
+      <div class="fila-titulo">
         <div class="titulo-con-filtro">
           <h2>Agentes</h2>
           <div class="filtro" role="group" aria-label="Filtrar agentes">
-            <button type="button" aria-pressed="true">Activos</button>
-            <button type="button" aria-pressed="false">Inactivos</button>
+            <button type="button" id="ver-activos" aria-pressed="true">Activos · <span id="total-activos">5</span></button>
+            <button type="button" id="ver-inactivos" aria-pressed="false">Inactivos · <span id="total-inactivos">2</span></button>
           </div>
         </div>
-        <button class="boton" type="button">+ Agregar agente</button>
+        <button class="boton solo-gestion" type="button" id="abrir-agregar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Agregar agente
+        </button>
       </div>
 
-      <div class="tabla-contenedor">
-        <table>
+      <!-- Tabla de activos. Las filas son de ejemplo: las reemplaza js/en-vivo.js.
+           Cada fila guarda sus datos en data-empleado y data-nombre. -->
+      <div class="contenedor-tabla" id="tabla-activos">
+        <table class="tabla">
           <thead>
             <tr>
               <th>No. empleado</th>
               <th>Agente</th>
               <th>Estado</th>
               <th>Conversación</th>
-              <th>Tiempo</th>
-              <th class="acciones">Acciones</th>
+              <th>Tiempo de atención</th>
+              <th class="acciones solo-gestion">Acciones</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>1002</td>
-              <td>Ana Torres</td>
-              <td><span class="estado atendiendo">Atendiendo</span></td>
+          <tbody id="filas-activos">
+            <tr data-empleado="1002" data-nombre="Ana Torres">
+              <td class="numero">1002</td>
+              <td class="nombre">Ana Torres</td>
+              <td><span class="estado estado-atendiendo">Atendiendo</span></td>
               <td>Laura Méndez</td>
-              <td>00:12:48</td>
-              <td class="acciones">
-                <button class="boton-icono" type="button" aria-label="Editar agente">✎</button>
-                <button class="boton-icono" type="button" aria-label="Eliminar agente">🗑</button>
+              <td class="tiempo">00:12:48</td>
+              <td class="acciones solo-gestion">
+                <button class="boton-icono" type="button" data-accion="editar" aria-label="Editar a Ana Torres">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+                <button class="boton-icono" type="button" data-accion="eliminar" aria-label="Eliminar a Ana Torres">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                </button>
               </td>
             </tr>
-            <tr>
-              <td>1005</td>
-              <td>Luis Ramírez</td>
-              <td><span class="estado atendiendo">Atendiendo</span></td>
-              <td>Carlos Peña</td>
-              <td>00:04:05</td>
-              <td class="acciones">
-                <button class="boton-icono" type="button" aria-label="Editar agente">✎</button>
-                <button class="boton-icono" type="button" aria-label="Eliminar agente">🗑</button>
-              </td>
-            </tr>
-            <tr>
-              <td>1007</td>
-              <td>Pedro Sánchez</td>
-              <td><span class="estado disponible">Disponible</span></td>
+            <tr data-empleado="1007" data-nombre="Pedro Sánchez">
+              <td class="numero">1007</td>
+              <td class="nombre">Pedro Sánchez</td>
+              <td><span class="estado estado-disponible">Disponible</span></td>
               <td>—</td>
-              <td>—</td>
-              <td class="acciones">
-                <button class="boton-icono" type="button" aria-label="Editar agente">✎</button>
-                <button class="boton-icono" type="button" aria-label="Eliminar agente">🗑</button>
-              </td>
-            </tr>
-            <tr>
-              <td>1012</td>
-              <td>María Gómez</td>
-              <td><span class="estado pausado">En pausa</span></td>
-              <td>—</td>
-              <td>—</td>
-              <td class="acciones">
-                <button class="boton-icono" type="button" aria-label="Editar agente">✎</button>
-                <button class="boton-icono" type="button" aria-label="Eliminar agente">🗑</button>
-              </td>
-            </tr>
-            <tr>
-              <td>1015</td>
-              <td>Daniel Castro</td>
-              <td><span class="estado desconectado">Desconectado</span></td>
-              <td>—</td>
-              <td>—</td>
-              <td class="acciones">
-                <button class="boton-icono" type="button" aria-label="Editar agente">✎</button>
-                <button class="boton-icono" type="button" aria-label="Eliminar agente">🗑</button>
+              <td class="tiempo">—</td>
+              <td class="acciones solo-gestion">
+                <button class="boton-icono" type="button" data-accion="editar" aria-label="Editar a Pedro Sánchez">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+                <button class="boton-icono" type="button" data-accion="eliminar" aria-label="Eliminar a Pedro Sánchez">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                </button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-    </section>
 
-    <!-- Solicitudes de ayuda -->
-    <section>
-      <h2>Piden ayuda</h2>
-      <div class="tabla-contenedor">
-        <table>
+      <!-- Tabla de inactivos (agentes dados de baja). Oculta hasta elegir el filtro -->
+      <div class="contenedor-tabla" id="tabla-inactivos" hidden>
+        <table class="tabla">
           <thead>
             <tr>
+              <th>No. empleado</th>
               <th>Agente</th>
-              <th>Conversación</th>
-              <th>Desde</th>
+              <th>Estado</th>
+              <th>Alta</th>
+              <th class="acciones solo-gestion">Acciones</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>Ana Torres</td>
-              <td>Laura Méndez</td>
-              <td>hace 3 min</td>
+          <tbody id="filas-inactivos">
+            <tr data-empleado="1003" data-nombre="Karla Núñez">
+              <td class="numero">1003</td>
+              <td class="nombre">Karla Núñez</td>
+              <td><span class="estado estado-inactivo">Inactivo</span></td>
+              <td>10/08/2026</td>
+              <td class="acciones solo-gestion">
+                <button class="boton-icono" type="button" data-accion="editar" aria-label="Editar a Karla Núñez">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+                <button class="boton boton-secundario" type="button" data-accion="reactivar">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>
+                  Reactivar
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </section>
 
-    <!-- Dos agentes en el mismo chat -->
-    <section>
-      <h2>Chats duplicados</h2>
-      <div class="tarjeta">
-        <p class="vacio">No hay dos agentes en el mismo chat.</p>
-      </div>
-    </section>
+    <div class="avisos">
+      <section>
+        <h2>Solicitudes de ayuda</h2>
+        <div id="lista-ayuda">
+          <div class="aviso aviso-ayuda">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>
+            <div>
+              <strong>Luis Ramírez</strong>
+              <span>Atendiendo a Carlos Peña</span>
+            </div>
+            <time>11:42</time>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Alertas de duplicidad</h2>
+        <div id="lista-duplicidad">
+          <div class="aviso aviso-duplicidad">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg>
+            <div>
+              <strong>Carlos Peña</strong>
+              <span>Ana Torres y Luis Ramírez en el mismo chat</span>
+            </div>
+            <time>11:35</time>
+          </div>
+        </div>
+      </section>
+    </div>
   </main>
+
+  <!-- ===== Ventanas de gestión de agentes ===== -->
+  <dialog class="ventana" id="ventana-agregar" aria-labelledby="titulo-agregar">
+    <form method="dialog">
+      <div>
+        <h2 id="titulo-agregar">Agregar agente</h2>
+        <p>El nombre debe ser igual al que el agente elegirá en la extensión.</p>
+      </div>
+      <div class="campo">
+        <label for="agregar-empleado">No. de empleado</label>
+        <input id="agregar-empleado" name="empleado" type="text" inputmode="numeric" required>
+      </div>
+      <div class="campo">
+        <label for="agregar-nombre">Nombre del agente</label>
+        <input id="agregar-nombre" name="nombre" type="text" required>
+      </div>
+      <div class="ventana-botones">
+        <button class="boton boton-secundario" type="submit" value="cancelar" formnovalidate>Cancelar</button>
+        <button class="boton" type="submit" value="agregar">Agregar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="ventana" id="ventana-editar" aria-labelledby="titulo-editar">
+    <form method="dialog">
+      <div>
+        <h2 id="titulo-editar">Editar agente</h2>
+        <p>Si cambias el nombre, el agente debe volver a elegirlo en la extensión. Su historial no se pierde.</p>
+      </div>
+      <div class="campo">
+        <label for="editar-empleado">No. de empleado</label>
+        <input id="editar-empleado" name="empleado" type="text" inputmode="numeric" required>
+      </div>
+      <div class="campo">
+        <label for="editar-nombre">Nombre del agente</label>
+        <input id="editar-nombre" name="nombre" type="text" required>
+      </div>
+      <div class="ventana-botones">
+        <button class="boton boton-secundario" type="submit" value="cancelar" formnovalidate>Cancelar</button>
+        <button class="boton" type="submit" value="guardar">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="ventana" id="ventana-eliminar" aria-labelledby="titulo-eliminar">
+    <form method="dialog">
+      <div class="icono-peligro">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+      </div>
+      <div>
+        <h2 id="titulo-eliminar">¿Eliminar a <span id="eliminar-nombre">Pedro Sánchez</span>?</h2>
+        <p>Ya no podrá conectarse desde la extensión. Pasará a la lista de Inactivos y su historial y reportes se conservan.</p>
+      </div>
+      <div class="ventana-botones">
+        <button class="boton boton-secundario" type="submit" value="cancelar">Cancelar</button>
+        <button class="boton boton-peligro" type="submit" value="eliminar">Eliminar</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="js/en-vivo.js"></script>
 </body>
 </html>

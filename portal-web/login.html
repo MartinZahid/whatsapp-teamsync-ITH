@@ -4,40 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iniciar sesión · WhatsApp Team Sync</title>
-  <link rel="stylesheet" href="css/comun.css">
-  <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="css/estilos.css">
 </head>
-<body>
-  <div class="pagina-login">
-    <div class="franja"></div>
+<body class="pagina-login">
+  <div class="franja"></div>
 
-    <main class="contenedor-login">
-      <!-- Por ahora el botón solo lleva a En vivo: todavía no se valida el
-           usuario. Los campos no llevan `name` para que no viajen en la URL;
-           se agregan cuando exista el login real. -->
-      <form class="tarjeta-login" action="en-vivo.html" method="get">
-        <div class="encabezado-login">
-          <div class="logo" aria-hidden="true"></div>
-          <h1>WhatsApp Team Sync</h1>
-          <p>Inicia sesión para ver a tu equipo</p>
-        </div>
+  <main class="contenedor-login">
+    <!-- Mientras no exista el login real, el botón solo lleva a En vivo.
+         Los campos no llevan `name` para que la contraseña no viaje en la URL;
+         se agregan cuando js/login.js mande los datos al servidor. -->
+    <form class="tarjeta-login" id="form-login" action="en-vivo.html" method="get">
+      <header class="encabezado-login">
+        <div class="logo" aria-hidden="true"></div>
+        <h1>WhatsApp Team Sync</h1>
+        <p>Portal web de monitoreo</p>
+      </header>
 
-        <div class="campo">
-          <label for="usuario">Usuario</label>
-          <input id="usuario" type="text" autocomplete="username">
-        </div>
+      <div class="campo">
+        <label for="usuario">Usuario</label>
+        <input id="usuario" type="text" autocomplete="username">
+      </div>
 
-        <div class="campo">
-          <label for="contrasena">Contraseña</label>
-          <input id="contrasena" type="password" autocomplete="current-password">
-        </div>
+      <div class="campo">
+        <label for="contrasena">Contraseña</label>
+        <input id="contrasena" type="password" autocomplete="current-password">
+      </div>
 
-        <!-- Lo mostrará el login real cuando el usuario no exista -->
-        <p class="mensaje-error" hidden>Usuario o contraseña incorrectos.</p>
+      <p class="mensaje-error" id="error-login" hidden>Usuario o contraseña incorrectos.</p>
 
-        <button class="boton boton-grande" type="submit">Entrar</button>
-      </form>
-    </main>
-  </div>
+      <button class="boton boton-grande" type="submit">Iniciar sesión</button>
+    </form>
+  </main>
 </body>
 </html>

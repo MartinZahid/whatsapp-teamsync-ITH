@@ -4,33 +4,44 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Respaldo · WhatsApp Team Sync</title>
-  <link rel="stylesheet" href="css/comun.css">
-  <link rel="stylesheet" href="css/respaldo.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/estilos.css">
 </head>
 <body>
-  <!-- Barra con las pestañas: es igual en todas las páginas;
-       solo cambia cuál lleva la clase "activa". -->
+  <!-- Encabezado: igual en todas las pestañas -->
   <header class="barra">
-    <div class="marca">
-      <span class="logo-chico" aria-hidden="true"></span>
-      WhatsApp Team Sync
+    <div class="ancho">
+      <div class="marca">
+        <div class="logo" aria-hidden="true"></div>
+        <span>WhatsApp Team Sync</span>
+      </div>
+      <div class="usuario">
+        <span class="chip"><span id="usuario-nombre">administrador</span> · <strong id="usuario-rol">Gestión</strong></span>
+        <a class="chip" href="login.html" id="salir">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          Salir
+        </a>
+      </div>
     </div>
-    <nav class="pestanas" aria-label="Secciones">
-      <a class="pestana" href="en-vivo.html">En vivo</a>
-      <a class="pestana" href="historial.html">Historial</a>
-      <a class="pestana" href="reportes.html">Reportes</a>
-      <a class="pestana activa" href="respaldo.html" aria-current="page">Respaldo</a>
-    </nav>
-    <a class="salir" href="login.html">Salir</a>
   </header>
 
-  <main class="contenido">
-    <div class="fila-titulo">
+  <nav class="pestanas" aria-label="Secciones">
+    <div class="ancho">
+      <a href="en-vivo.html">En vivo</a>
+      <a href="historial.html">Historial</a>
+      <a href="contactos.html">Contactos</a>
+      <a href="reportes.html">Reportes</a>
+      <a href="respaldo.html" class="solo-gestion" aria-current="page">Respaldo</a>
+    </div>
+  </nav>
+
+  <main class="ancho contenido">
+    <div class="encabezado-seccion">
       <h1>Respaldo</h1>
-      <p>Descarga una copia de la información del sistema.</p>
+      <p class="descripcion">Descarga una copia de las sesiones y los eventos.</p>
     </div>
 
-    <!-- Aquí irá el contenido de Respaldo cuando se diseñe. -->
+    <!-- Aquí irá el contenido cuando se apruebe el diseño de Respaldo. -->
     <div class="tarjeta en-construccion">
       <p>Esta sección está en construcción.</p>
     </div>

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contactos · WhatsApp Team Sync</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <!-- Encabezado: igual en todas las pestañas -->
+  <header class="barra">
+    <div class="ancho">
+      <div class="marca">
+        <div class="logo" aria-hidden="true"></div>
+        <span>WhatsApp Team Sync</span>
+      </div>
+      <div class="usuario">
+        <span class="chip"><span id="usuario-nombre">administrador</span> · <strong id="usuario-rol">Gestión</strong></span>
+        <a class="chip" href="login.html" id="salir">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          Salir
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <nav class="pestanas" aria-label="Secciones">
+    <div class="ancho">
+      <a href="en-vivo.html">En vivo</a>
+      <a href="historial.html">Historial</a>
+      <a href="contactos.html" aria-current="page">Contactos</a>
+      <a href="reportes.html">Reportes</a>
+      <a href="respaldo.html" class="solo-gestion">Respaldo</a>
+    </div>
+  </nav>
+
+  <main class="ancho contenido">
+    <div class="encabezado-seccion">
+      <h1>Contactos</h1>
+      <p class="descripcion">Los chats que no están agendados en WhatsApp llegan con su número. Ponles un nombre para que aparezcan así en el historial y los reportes.</p>
+    </div>
+
+    <section>
+      <div class="fila-titulo">
+        <div class="filtro" role="group" aria-label="Filtrar contactos">
+          <button type="button" id="ver-todos" aria-pressed="true">Todos · <span id="total-todos">7</span></button>
+          <button type="button" id="ver-sin-nombre" aria-pressed="false">Sin nombre · <span id="total-sin-nombre">2</span></button>
+        </div>
+        <label class="oculto" for="buscar-contacto">Buscar contacto</label>
+        <input class="buscador" id="buscar-contacto" type="search" placeholder="Buscar por nombre o número">
+      </div>
+
+      <!-- Las filas son de ejemplo: las reemplaza js/contactos.js.
+           Cada fila guarda sus datos en data-nombre, data-numero y data-whatsapp. -->
+      <div class="contenedor-tabla">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Número</th>
+              <th>Como aparece en WhatsApp</th>
+              <th>Sesiones</th>
+              <th>Última vez</th>
+              <th class="acciones">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="filas-contactos">
+            <tr data-nombre="Laura Méndez" data-numero="+52 662 210 4478" data-whatsapp="Laura Méndez">
+              <td class="nombre">Laura Méndez</td>
+              <td class="hora">+52 662 210 4478</td>
+              <td class="detalle">Laura Méndez</td>
+              <td class="hora">18</td>
+              <td>Hoy 10:17</td>
+              <td class="acciones">
+                <button class="boton-icono" type="button" data-accion="editar" aria-label="Editar a Laura Méndez">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </td>
+            </tr>
+            <tr data-nombre="" data-numero="+52 662 184 3920" data-whatsapp="+52 662 184 3920">
+              <td><span class="etiqueta etiqueta-gris">Sin nombre</span></td>
+              <td class="hora">+52 662 184 3920</td>
+              <td class="detalle">+52 662 184 3920</td>
+              <td class="hora">3</td>
+              <td>Hoy 10:06</td>
+              <td class="acciones">
+                <button class="boton boton-chico" type="button" data-accion="editar">Poner nombre</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Ventana para editar el nombre y el número de un contacto -->
+  <dialog class="ventana" id="ventana-contacto" aria-labelledby="titulo-contacto">
+    <form method="dialog">
+      <div>
+        <h2 id="titulo-contacto">Editar contacto</h2>
+        <p>Solo cambia cómo se ve en el portal. En WhatsApp sigue igual.</p>
+      </div>
+      <div class="dato-referencia">
+        <span>Como aparece en WhatsApp</span>
+        <strong id="contacto-whatsapp">+52 662 184 3920</strong>
+      </div>
+      <div class="campo">
+        <label for="contacto-nombre">Nombre</label>
+        <input id="contacto-nombre" name="nombre" type="text" required>
+      </div>
+      <div class="campo">
+        <label for="contacto-numero">Número</label>
+        <input id="contacto-numero" name="numero" type="tel">
+      </div>
+      <div class="ventana-botones">
+        <button class="boton boton-secundario" type="submit" value="cancelar" formnovalidate>Cancelar</button>
+        <button class="boton" type="submit" value="guardar">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="js/contactos.js"></script>
+</body>
+</html>

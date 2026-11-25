@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Historial · WhatsApp Team Sync</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <!-- Encabezado: igual en todas las pestañas -->
+  <header class="barra">
+    <div class="ancho">
+      <div class="marca">
+        <div class="logo" aria-hidden="true"></div>
+        <span>WhatsApp Team Sync</span>
+      </div>
+      <div class="usuario">
+        <span class="chip"><span id="usuario-nombre">administrador</span> · <strong id="usuario-rol">Gestión</strong></span>
+        <a class="chip" href="#" id="salir">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          Salir
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <nav class="pestanas" aria-label="Secciones">
+    <div class="ancho">
+      <a href="index.html">En vivo</a>
+      <a href="historial.html" aria-current="page">Historial</a>
+      <a href="contactos.html">Contactos</a>
+      <a href="reportes.html">Reportes</a>
+      <a href="respaldo.html" class="solo-gestion">Respaldo</a>
+    </div>
+  </nav>
+
+  <main class="ancho contenido">
+    <h1>Historial</h1>
+
+    <!-- Filtros: al cambiar cualquiera, js/historial.js vuelve a pedir los datos -->
+    <form class="filtros" id="filtros">
+      <div class="campo">
+        <label for="filtro-agente">Agente</label>
+        <select id="filtro-agente" name="agente">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="filtro-contacto">Contacto</label>
+        <input id="filtro-contacto" name="contacto" type="search" placeholder="Nombre o número">
+      </div>
+      <div class="campo">
+        <label for="filtro-desde">Desde</label>
+        <input id="filtro-desde" name="desde" type="date">
+      </div>
+      <div class="campo">
+        <label for="filtro-hasta">Hasta</label>
+        <input id="filtro-hasta" name="hasta" type="date">
+      </div>
+      <button class="boton boton-secundario" type="reset">Limpiar filtros</button>
+    </form>
+
+    <!-- Sesiones de atención -->
+    <section>
+      <div class="fila-titulo">
+        <h2>Sesiones de atención</h2>
+        <span class="nota"><span id="total-sesiones">318</span> sesiones en el periodo</span>
+      </div>
+
+      <!-- Las filas son de ejemplo: las reemplaza js/historial.js -->
+      <div class="contenedor-tabla">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Agente</th>
+              <th>Contacto</th>
+              <th>Inicio</th>
+              <th>Fin</th>
+              <th>Duración</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="filas-sesiones">
+            <tr>
+              <td class="nombre">Ana Torres</td>
+              <td>Laura Méndez</td>
+              <td class="hora">19/11 10:04</td>
+              <td class="hora">10:17</td>
+              <td class="tiempo">00:12:48</td>
+              <td><span class="etiqueta etiqueta-verde">Cerrada</span></td>
+            </tr>
+            <tr>
+              <td class="nombre">Luis Ramírez</td>
+              <td>Carlos Peña</td>
+              <td class="hora">19/11 10:12</td>
+              <td class="hora">—</td>
+              <td class="tiempo">00:04:05</td>
+              <td><span class="etiqueta etiqueta-roja">Abierta</span></td>
+            </tr>
+            <tr>
+              <td class="nombre">Pedro Sánchez</td>
+              <td>+52 662 184 3920 <span class="etiqueta etiqueta-gris">Sin nombre</span></td>
+              <td class="hora">19/11 09:58</td>
+              <td class="hora">10:06</td>
+              <td class="tiempo">00:08:10</td>
+              <td><span class="etiqueta etiqueta-verde">Cerrada</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="paginacion" id="paginacion-sesiones">
+        <span class="nota">Mostrando 1–8 de 318</span>
+        <div class="paginas">
+          <button class="pagina" type="button" aria-label="Página anterior">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button class="pagina" type="button" aria-current="page">1</button>
+          <button class="pagina" type="button">2</button>
+          <button class="pagina" type="button">3</button>
+          <button class="pagina" type="button" aria-label="Página siguiente">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bitácora de eventos -->
+    <section>
+      <div class="fila-titulo">
+        <h2>Bitácora de eventos</h2>
+        <span class="nota"><span id="total-eventos">1 247</span> eventos en el periodo</span>
+      </div>
+
+      <!-- Las filas son de ejemplo: las reemplaza js/historial.js -->
+      <div class="contenedor-tabla">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Fecha y hora</th>
+              <th>Agente</th>
+              <th>Evento</th>
+              <th>Contacto</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="filas-eventos">
+            <tr>
+              <td class="hora">19/11 10:17</td>
+              <td class="nombre">Ana Torres</td>
+              <td><span class="etiqueta etiqueta-gris">Terminó atención</span></td>
+              <td>Laura Méndez</td>
+              <td class="detalle">Duración 00:12:48</td>
+            </tr>
+            <tr>
+              <td class="hora">19/11 09:42</td>
+              <td class="nombre">Luis Ramírez</td>
+              <td><span class="etiqueta etiqueta-naranja">Pidió ayuda</span></td>
+              <td>Carlos Peña</td>
+              <td class="detalle">—</td>
+            </tr>
+            <tr>
+              <td class="hora">19/11 09:35</td>
+              <td class="nombre">Ana Torres y Luis Ramírez</td>
+              <td><span class="etiqueta etiqueta-roja">Duplicidad</span></td>
+              <td>Carlos Peña</td>
+              <td class="detalle">Dos agentes en el mismo chat</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="paginacion" id="paginacion-eventos">
+        <span class="nota">Mostrando 1–8 de 1 247</span>
+        <div class="paginas">
+          <button class="pagina" type="button" aria-label="Página anterior">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button class="pagina" type="button" aria-current="page">1</button>
+          <button class="pagina" type="button">2</button>
+          <button class="pagina" type="button">3</button>
+          <button class="pagina" type="button" aria-label="Página siguiente">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
