@@ -68,6 +68,10 @@ function connectPort(): void {
 void renderSaved()
 connectPort()
 
+// Al abrir WhatsApp se intenta conectar al servidor, aunque antes se hubiera
+// quedado desconectado (por ejemplo, porque el agente estaba en uso).
+send({ type: 'CONNECT' })
+
 // Avisa al service worker cuando el agente escribe en el chat abierto.
 const escritura = vigilarEscritura(() => send({ type: 'WRITING' }))
 

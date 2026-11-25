@@ -41,6 +41,8 @@ export class RoomManager {
   // En qué chat ya ESCRIBIÓ cada agente (nombre normalizado). Se borra al
   // cambiar de chat o de estado. Sirve para la duplicidad (RN-07).
   private escribioEn = new Map<string, string>()
+  // Id del navegador (`client`) de la conexión actual de cada agente.
+  private clientes = new Map<string, string>()
 
   // La bitácora se recibe desde fuera (server.ts). Si no se da, no se guarda nada.
   // Si hay base, solo pueden conectarse los agentes dados de alta en ella.
@@ -70,7 +72,23 @@ export class RoomManager {
   // su identidad. No difunde nada: el mensaje que identificó al agente se
   // procesa justo después con handleMessage() y ese ya difunde el estado real.
   // Devuelve null si hay base y el nombre no está dado de alta.
-  register(ws: WebSocket, name: string): string | null {
+  // ¿El agente ya está en uso en OTRO navegador que sigue activo?
+  // Regla: gana el que ya está conectado. Pero NUNCA queda atrapado: se libera
+  // si su conexión se cerró, si ya está Desconectado o si lleva más de 60 s
+  // sin dar señal (heartbeat). El mismo navegador siempre puede reconectarse.
+  agenteOcupado(name: string, client?: string): boolean {
+    const agent = this.getAllAgents().find((a) => a.name === name)
+    if (!agent) return false
+    const ws = this.connections.get(agent.id)
+    if (!ws || ws.readyState !== WebSocket.OPEN) return false
+    if (agent.status === 'offline') return false
+    if (Date.now() - agent.lastSeen > HEARTBEAT_TIMEOUT_MS) return false
+    const actual = this.clientes.get(agent.id)
+    if (client && actual === client) return false // es el mismo navegador
+    return true
+  }
+
+  register(ws: WebSocket, name: string, client?: string): string | null {
     const existing = this.getAllAgents().find((a) => a.name === name) ?? this.cargarDeLaBase(name)
     if (!existing && this.restringido) {
       console.log(`[Servidor] Rechazado: "${name}" no está dado de alta`)
@@ -80,16 +98,18 @@ export class RoomManager {
     if (existing) {
       const previous = this.connections.get(existing.id)
       if (previous && previous !== ws && previous.readyState === WebSocket.OPEN) {
-        // El mismo nombre entró desde otro navegador. Avisamos a la conexión
-        // vieja para que NO intente reconectarse (si no, se tumban en bucle).
+        // Llegó una conexión nueva que SÍ puede quedarse con el agente (es el
+        // mismo navegador que se reconecta, o la vieja ya no daba señal; ver
+        // agenteOcupado). Avisamos a la vieja para que NO intente reconectarse.
         this.send(previous, {
           type: 'ERROR',
           code: 'REPLACED',
-          message: 'Este agente se conectó desde otro navegador'
+          message: 'Este agente se volvió a conectar en otra conexión'
         })
         previous.close()
       }
       this.connections.set(existing.id, ws)
+      this.guardarCliente(existing.id, client)
       existing.lastSeen = Date.now()
       console.log(`[Servidor] Agente conectado: ${name}`)
       this.bitacora.agenteConectado(existing)
@@ -98,6 +118,7 @@ export class RoomManager {
 
     const id = `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     this.connections.set(id, ws)
+    this.guardarCliente(id, client)
     const agent: Agent = {
       id,
       name,
@@ -111,6 +132,11 @@ export class RoomManager {
     console.log(`[Servidor] Agente registrado: ${name}`)
     this.bitacora.agenteConectado(agent)
     return id
+  }
+
+  private guardarCliente(agentId: string, client?: string): void {
+    if (client) this.clientes.set(agentId, client)
+    else this.clientes.delete(agentId)
   }
 
   // Cambia el estado de un agente y lleva el cronómetro de atención
@@ -217,6 +243,7 @@ export class RoomManager {
     this.bitacora.bajaAgente(agent)
     this.agents.delete(agent.id)
     this.escribioEn.delete(agent.id)
+    this.clientes.delete(agent.id)
     ws?.close()
     console.log(`[Servidor] Agente dado de baja: ${agent.name}`)
     this.broadcastPresence()

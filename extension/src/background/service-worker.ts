@@ -8,6 +8,7 @@
 import type { Agent, AgentStatus, ClientToServerMessage, ServerToClientMessage } from '@shared/types'
 import {
   DEFAULT_SERVER_URL,
+  getClientId,
   getConfig,
   getConnection,
   getCurrentContact,
@@ -37,6 +38,8 @@ let currentContact: string | null = null
 // Chat en el que ya se avisó al servidor que el agente escribió (WRITING).
 // Así se manda UNA vez por chat y no en cada tecla.
 let escritoEn: string | null = null
+// Id de este navegador (ver getClientId en lib/storage.ts).
+let clientId = ''
 
 let socket: WebSocket | null = null
 let attempts = 0
@@ -53,6 +56,7 @@ async function init(): Promise<void> {
   connection = await getConnection()
   desiredStatus = await getSavedStatus()
   currentContact = await getCurrentContact()
+  clientId = await getClientId()
 
   ensureAlarm()
   if (config.name) connect()
@@ -174,8 +178,9 @@ function scheduleReconnect(): void {
   void setConnection('disconnected', `Reintentando en ${Math.round(delay / 1000)} s`)
 }
 
+// Todos los mensajes llevan el id del navegador (`client`).
 function send(message: ClientToServerMessage): void {
-  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message))
+  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ ...message, client: clientId }))
 }
 
 // Estado que de verdad se manda al servidor: "Atendiendo" solo si hay un chat
@@ -237,6 +242,11 @@ function handleServerMessage(message: ServerToClientMessage): void {
         // El nombre no está en la base: reintentar no sirve hasta que lo den de alta.
         manualDisconnect = true
         void setConnection('disconnected', 'Este agente no está dado de alta en el servidor')
+      } else if (message.code === 'AGENT_IN_USE') {
+        // Otro navegador lo tiene activo. No reintentamos solos: se vuelve a
+        // intentar al abrir WhatsApp o al elegir el agente en el popup.
+        manualDisconnect = true
+        void setConnection('disconnected', 'Este agente ya está conectado en otro navegador')
       } else {
         console.warn('[WTS] Error del servidor:', message.code, message.message)
       }
@@ -307,6 +317,10 @@ function setConfig(next: AgentConfig): void {
     attempts = 0
     if (config.name) connect()
     else void setConnection('disconnected', 'Selecciona un agente')
+  } else if (config.name && connection.status !== 'connected') {
+    // Eligió el MISMO agente estando desconectado: se vuelve a intentar.
+    attempts = 0
+    connect()
   }
   emitState()
 }

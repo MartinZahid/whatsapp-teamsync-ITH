@@ -61,7 +61,17 @@ export function attachWebSocket(httpServer: Server, roomManager: RoomManager): W
           sendError(ws, 'AUTH_REQUIRED', 'El primer mensaje debe incluir el nombre del agente')
           return
         }
-        const id = roomManager.register(ws, message.agent.trim())
+        const nombre = message.agent.trim()
+        const client = typeof message.client === 'string' ? message.client : undefined
+        // Gana el que ya está conectado: si el agente sigue activo en OTRO
+        // navegador, se rechaza esta conexión (no se le quita al otro).
+        if (roomManager.agenteOcupado(nombre, client)) {
+          console.log(`[Servidor] Rechazado: "${nombre}" ya está conectado en otro navegador`)
+          sendError(ws, 'AGENT_IN_USE', 'Este agente ya está conectado en otro navegador')
+          ws.close()
+          return
+        }
+        const id = roomManager.register(ws, nombre, client)
         if (!id) {
           sendError(ws, 'UNKNOWN_AGENT', 'Este agente no está dado de alta')
           ws.close()

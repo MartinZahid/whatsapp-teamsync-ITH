@@ -118,7 +118,10 @@ function renderConnection(status: AppState['connection']['status']): void {
     'server-status' +
     (status === 'disconnected' ? ' bad' : status === 'connecting' ? ' warn' : '')
   const icon = status === 'connected' ? '✓' : status === 'connecting' ? '…' : '✗'
-  connectionBox.textContent = `${icon} ${CONNECTION_LABELS[status]}`
+  // Si está desconectado y se sabe por qué, se muestra el motivo
+  // (p. ej. "Este agente ya está conectado en otro navegador").
+  const motivo = status === 'disconnected' ? appState?.connection.message : undefined
+  connectionBox.textContent = `${icon} ${motivo ?? CONNECTION_LABELS[status]}`
 }
 
 function applyState(state: AppState): void {

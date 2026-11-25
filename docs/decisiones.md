@@ -95,3 +95,32 @@ como duplicidad, y el aviso era un texto pequeño en el panel.
 
 **Alternativa descartada.** Botones "Tomar" y "Ceder" en el aviso: se
 probaron y se quitaron para mantenerlo sencillo.
+
+## ADR-004: un agente, un navegador; conexión automática (25/11/2026)
+
+**Contexto.** Si otra persona elegía el mismo agente en su extensión, el
+servidor le quitaba la conexión al primero (`REPLACED`) y ese navegador ya no
+se volvía a conectar solo: ni al abrir WhatsApp ni al elegir otra vez el mismo
+agente (había que cambiar de agente y regresar).
+
+**Decisión.**
+
+- **Gana el que ya está conectado.** Si el agente está activo en otro navegador,
+  el servidor rechaza la conexión nueva con `AGENT_IN_USE`.
+- **Nunca queda atrapado.** Se libera si la conexión anterior se cerró, si ya está
+  Desconectado o si lleva más de 60 s sin heartbeat; reiniciar el servidor
+  libera todo.
+- **El mismo navegador siempre se reconecta.** Cada navegador tiene un id al azar
+  (`client`, guardado por la extensión) para no bloquearse a sí mismo tras un
+  corte de internet.
+- **Conexión automática.** Al abrir WhatsApp la extensión intenta conectarse; y en
+  el popup, elegir el agente (aunque sea el mismo) vuelve a intentar.
+- El popup muestra el motivo de la desconexión.
+
+**Consecuencias.**
+
+- Si alguien deja una extensión abierta con un agente, ese agente no se puede
+  usar en otro navegador hasta que la cierre (o pasen 60 s sin señal).
+- El agente se sigue identificando solo por su nombre (sin contraseña): es una
+  limitación conocida para el alcance de la residencia.
+
