@@ -69,7 +69,7 @@ void renderSaved()
 connectPort()
 
 // Al abrir WhatsApp se intenta conectar al servidor, aunque antes se hubiera
-// quedado desconectado (por ejemplo, porque el agente estaba en uso).
+// quedado desconectado (por ejemplo, porque otro navegador eligió el mismo agente).
 send({ type: 'CONNECT' })
 
 // Avisa al service worker cuando el agente escribe en el chat abierto.

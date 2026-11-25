@@ -34,10 +34,7 @@ export interface Agent {
 // Nota didáctica: los mensajes viajan como TEXTO (JSON). Los objetos de abajo
 // son solo la forma que ese texto tiene una vez convertido con JSON.parse.
 
-// `client` = id al azar del NAVEGADOR (lo genera la extensión una vez y lo
-// guarda). Sirve para distinguir "el mismo navegador que se reconecta" de
-// "otro navegador que quiere usar el mismo agente".
-export type ClientToServerMessage = { client?: string } & (
+export type ClientToServerMessage =
   | { type: 'ATTENDING'; agent: string; contact: string }
   | { type: 'AVAILABLE'; agent: string }
   | { type: 'PAUSED'; agent: string; reason?: string }
@@ -47,7 +44,6 @@ export type ClientToServerMessage = { client?: string } & (
   | { type: 'HELP_REQUEST'; agent: string; requesting: boolean }
   // El agente empezó a escribir en el chat que tiene abierto (RN-07).
   | { type: 'WRITING'; agent: string; contact: string }
-)
 
 // --- Mensajes del servidor hacia el cliente (extensión) ---
 
@@ -63,11 +59,8 @@ export interface DuplicateAlertMessage {
 // Códigos de error que puede enviar el servidor.
 //   PARSE_ERROR   el texto recibido no es JSON válido
 //   AUTH_REQUIRED el primer mensaje no traía el nombre del agente
-//   REPLACED      el mismo agente se conectó desde otro navegador (solo pasa si
-//                 esta conexión ya no daba señal o es del mismo navegador)
-//   UNKNOWN_AGENT el nombre no está dado de alta en la base
-//   AGENT_IN_USE  el agente ya está conectado en OTRO navegador que sigue activo
-export type ErrorCode = 'PARSE_ERROR' | 'AUTH_REQUIRED' | 'REPLACED' | 'UNKNOWN_AGENT' | 'AGENT_IN_USE'
+//   REPLACED      el mismo agente se conectó desde otro navegador
+export type ErrorCode = 'PARSE_ERROR' | 'AUTH_REQUIRED' | 'REPLACED' | 'UNKNOWN_AGENT'
 
 export type ServerToClientMessage =
   | { type: 'WELCOME'; message: string; protocol: string }

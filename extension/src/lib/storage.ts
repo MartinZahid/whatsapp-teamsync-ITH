@@ -9,8 +9,7 @@ export const KEYS = {
   connection: 'wts_connection',
   status: 'wts_status',
   currentContact: 'wts_current_contact',
-  panelCollapsed: 'wts_panel_collapsed',
-  clientId: 'wts_client_id'
+  panelCollapsed: 'wts_panel_collapsed'
 } as const
 
 export const DEFAULT_SERVER_URL = 'ws://localhost:3001'
@@ -45,17 +44,6 @@ function write(key: string, value: unknown): Promise<void> {
   return new Promise((resolve) => {
     chrome.storage.local.set({ [key]: value }, () => resolve())
   })
-}
-
-// Id al azar de ESTE navegador. Se crea la primera vez y se guarda para
-// siempre. El servidor lo usa para saber si una reconexión viene del mismo
-// navegador (se acepta) o de otro (si el agente sigue activo, se rechaza).
-export async function getClientId(): Promise<string> {
-  const saved = await read<string>(KEYS.clientId)
-  if (saved) return saved
-  const id = crypto.randomUUID()
-  await write(KEYS.clientId, id)
-  return id
 }
 
 export async function getConfig(): Promise<AgentConfig> {

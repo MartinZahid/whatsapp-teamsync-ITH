@@ -13,24 +13,16 @@ directamente su estado real: `ATTENDING`, `AVAILABLE` o `PAUSED`). Después el
 servidor responde con `SERVER_INFO`. Si el primer mensaje no trae `agent`, el
 servidor responde con `ERROR` (`AUTH_REQUIRED`).
 
-Todos los mensajes del cliente pueden traer `client`: un id al azar del
-**navegador** que la extensión genera una vez y guarda.
+Si ya existe un agente con el mismo nombre, se **reutiliza su registro**
+(reconexión) y conserva su identidad. Si la conexión anterior seguía abierta
+(el mismo agente en otro navegador), el servidor le envía `ERROR` (`REPLACED`)
+y la cierra; la extensión que recibe `REPLACED` no intenta reconectarse sola
+(si no, dos navegadores con el mismo agente se tumbarían en bucle).
 
-**Un agente, un navegador (gana el que ya está conectado, ADR-004).** Si el
-agente ya está conectado en **otro** navegador que sigue activo, el servidor
-rechaza la conexión nueva con `ERROR` (`AGENT_IN_USE`) y no le quita el agente
-al primero. El agente nunca queda atrapado: se libera si su conexión se cerró,
-si ya está `offline` o si lleva más de 60 s sin dar señal; y al reiniciar el
-servidor todo se libera.
-
-Si la conexión nueva sí puede quedarse con el agente (es el **mismo**
-navegador, identificado por `client`, o la anterior ya no daba señal), se
-**reutiliza su registro** y conserva su identidad; a la conexión vieja se le
-envía `ERROR` (`REPLACED`) y se cierra.
-
-La extensión que recibe `REPLACED`, `AGENT_IN_USE` o `UNKNOWN_AGENT` no
-reintenta sola; vuelve a intentar al **abrir WhatsApp** o al **elegir el agente**
-en el popup (aunque sea el mismo). El popup muestra el motivo.
+La extensión vuelve a intentar conectarse al **abrir WhatsApp** y al **elegir el
+agente** en el popup (aunque sea el mismo), aunque antes se hubiera quedado
+desconectada (`REPLACED`, `UNKNOWN_AGENT` o sin servidor). El popup muestra el
+motivo de la desconexión.
 
 ## Mensajes del cliente al servidor
 
@@ -52,7 +44,7 @@ en el popup (aunque sea el mismo). El popup muestra el motivo.
 | `SERVER_INFO` | `version`, `agents` | Estado inicial tras registrarse. |
 | `PRESENCE_UPDATE` | `agents` | Lista actualizada de agentes. |
 | `DUPLICATE_ALERT` | `contact`, `agents`, `at` | Dos o más agentes **escribieron** en el mismo chat. Solo lo reciben ellos. |
-| `ERROR` | `code`, `message` | Error: `PARSE_ERROR` (no es JSON o no trae `type`), `AUTH_REQUIRED`, `UNKNOWN_AGENT` (el nombre no está dado de alta), `AGENT_IN_USE` (el agente está activo en otro navegador) o `REPLACED`. |
+| `ERROR` | `code`, `message` | Error: `PARSE_ERROR` (no es JSON o no trae `type`), `AUTH_REQUIRED`, `UNKNOWN_AGENT` (el nombre no está dado de alta; la extensión deja de reintentar) o `REPLACED`. |
 
 La baja de agentes ya **no** viaja por el WebSocket (ADR-001): cualquier
 extensión podía darse de baja a sí misma. La hace el servidor (`npm run agentes`

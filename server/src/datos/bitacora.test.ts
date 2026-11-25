@@ -208,35 +208,3 @@ test('ATTENDING sin contacto se ignora', async () => {
   sala.handleMessage(id, { type: 'ATTENDING', agent: 'Ana' } as never)
   assert.equal(filas(base, 'SELECT count(*) FROM sessions')[0][0], 0)
 })
-
-test('agente en uso: gana el que ya está conectado, pero nunca queda atrapado', async () => {
-  const base = await BaseDeDatos.abrir(null)
-  const sala = salaCon(base, 'Ana')
-  const ws = { readyState: 1, send() {}, close() {} } as { readyState: number; send(): void; close(): void }
-  const ana = sala.register(ws as unknown as WebSocket, 'Ana', 'navegador-A')!
-  sala.handleMessage(ana, { type: 'AVAILABLE', agent: 'Ana' })
-
-  // Activo en el navegador A: otro navegador NO puede usarlo...
-  assert.equal(sala.agenteOcupado('Ana', 'navegador-B'), true)
-  assert.equal(sala.agenteOcupado('Ana'), true, 'sin id de navegador (p. ej. Postman) tampoco')
-  // ...pero el MISMO navegador sí se puede reconectar.
-  assert.equal(sala.agenteOcupado('Ana', 'navegador-A'), false)
-
-  // Salida 1: lleva más de 60 s sin heartbeat (la compu se durmió).
-  const agente = sala.getAllAgents().find((a) => a.name === 'Ana')!
-  agente.lastSeen = Date.now() - 61_000
-  assert.equal(sala.agenteOcupado('Ana', 'navegador-B'), false)
-  agente.lastSeen = Date.now()
-
-  // Salida 2: su conexión ya se cerró.
-  ws.readyState = 3
-  assert.equal(sala.agenteOcupado('Ana', 'navegador-B'), false)
-  ws.readyState = 1
-
-  // Salida 3: ya está Desconectado.
-  sala.handleMessage(ana, { type: 'OFFLINE', agent: 'Ana' })
-  assert.equal(sala.agenteOcupado('Ana', 'navegador-B'), false)
-
-  // Un agente que nadie usa está libre.
-  assert.equal(sala.agenteOcupado('Nadie', 'navegador-B'), false)
-})
