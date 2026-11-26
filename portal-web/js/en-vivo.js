@@ -2,9 +2,10 @@
 //
 // GUÍA DE LECTURA:
 //   Este archivo solo maneja la pantalla. Lo que habla con el servidor está en
-//   js/consumo/agentes.js.
-//   1. Pide los agentes al servidor al abrir la página y cada 5 s, y llena las
-//      dos tablas y los contadores.
+//   js/consumo/ (agentes.js y avisos.js).
+//   1. Pide al servidor los agentes, las solicitudes de ayuda y las alertas de
+//      duplicidad de hoy al abrir la página y cada 5 s, y llena las tablas, los
+//      contadores y los avisos.
 //   2. Las ventanas de agregar, editar y eliminar, y el botón Reactivar, mandan
 //      el cambio al servidor y vuelven a cargar la lista.
 //   3. Si el servidor rechaza algo (nombre o número repetido, faltan datos), el
@@ -17,6 +18,7 @@ import {
   listarAgentes,
   reactivarAgente
 } from './consumo/agentes.js'
+import { listarAyuda, listarDuplicidades } from './consumo/avisos.js'
 
 const CADA_MS = 5000
 
@@ -29,6 +31,8 @@ const ESTADOS = {
 
 const ICONO_EDITAR = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>'
 const ICONO_ELIMINAR = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>'
+const ICONO_AYUDA = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>'
+const ICONO_DUPLICIDAD = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg>'
 const ICONO_REACTIVAR = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>'
 
 let agentes = []        // última lista que mandó el servidor
@@ -39,8 +43,14 @@ let seleccionado = null // agente de la ventana abierta (editar o eliminar)
 async function cargar() {
   const nota = document.getElementById('ultima-actualizacion')
   try {
-    agentes = await listarAgentes()
+    const [lista, ayuda, duplicidades] = await Promise.all([
+      listarAgentes(),
+      listarAyuda(),
+      listarDuplicidades(inicioDeHoy())
+    ])
+    agentes = lista
     pintar()
+    pintarAvisos(ayuda, duplicidades)
     nota.textContent = `Se actualiza solo · ${new Date().toLocaleTimeString('es-MX')}`
   } catch {
     nota.textContent = 'Sin conexión con el servidor'
@@ -95,6 +105,57 @@ function filaInactivo(a) {
         <button class="boton boton-secundario" type="button" data-accion="reactivar">${ICONO_REACTIVAR} Reactivar</button>
       </td>
     </tr>`
+}
+
+// ---------- Pintar los avisos (ayuda y duplicidad) ----------
+
+function pintarAvisos(ayuda, duplicidades) {
+  document.getElementById('lista-ayuda').innerHTML =
+    ayuda.map(avisoAyuda).join('') || '<p class="nota">Nadie está pidiendo ayuda.</p>'
+  document.getElementById('lista-duplicidad').innerHTML =
+    duplicidades.map(avisoDuplicidad).join('') || '<p class="nota">Sin alertas de duplicidad hoy.</p>'
+}
+
+function avisoAyuda(s) {
+  const detalle = s.conversacion ? `Atendiendo a ${escapar(s.conversacion)}` : (ESTADOS[s.estado] ?? ESTADOS.offline).texto
+  return `
+    <div class="aviso aviso-ayuda">
+      ${ICONO_AYUDA}
+      <div>
+        <strong>${escapar(s.agente)}</strong>
+        <span>${detalle}</span>
+      </div>
+      <time>${s.desde ? hora(s.desde) : ''}</time>
+    </div>`
+}
+
+function avisoDuplicidad(a) {
+  return `
+    <div class="aviso aviso-duplicidad">
+      ${ICONO_DUPLICIDAD}
+      <div>
+        <strong>${escapar(a.contacto ?? 'Chat sin nombre')}</strong>
+        <span>${escapar(unirNombres(a.agentes))} en el mismo chat</span>
+      </div>
+      <time>${hora(a.cuando)}</time>
+    </div>`
+}
+
+// ["Ana", "Luis", "Pedro"] -> "Ana, Luis y Pedro"
+function unirNombres(nombres) {
+  return nombres.length > 1 ? `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}` : nombres.join('')
+}
+
+// Segundos Unix -> "11:42" (hora local)
+function hora(segundos) {
+  return new Date(segundos * 1000).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Inicio del día de hoy (hora local), en segundos Unix.
+function inicioDeHoy() {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  return Math.floor(hoy.getTime() / 1000)
 }
 
 function filaVacia(columnas, texto) {

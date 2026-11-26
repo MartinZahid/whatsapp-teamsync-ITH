@@ -39,6 +39,7 @@ server/src/
     api/               # APIs del portal: un archivo por recurso
       comun.ts         #   responder() y leerJson()
       agentes.ts       #   CRUD de agentes (/api/portal/agentes)
+      avisos.ts        #   ayuda y duplicidades (/api/portal/avisos/...)
   logica/
     room-manager.ts    # Presencia, estados, duplicidad, heartbeat
   datos/               # SQLite (sql.js): conexión, esquema, agentes, contactos, bitácora
@@ -82,6 +83,7 @@ Estas carpetas se crean cuando empiece su paso del plan; hoy no existen.
     - `comun.js` — `pedir()`, el único lugar con `fetch`.
     - `agentes.js` — `listarAgentes()`, `agregarAgente()`, `editarAgente()`,
       `eliminarAgente()`, `reactivarAgente()`.
+    - `avisos.js` — `listarAyuda()`, `listarDuplicidades(desde)`.
 - `data/` — archivo SQLite (no se versiona).
 
 ## Orden de trabajo

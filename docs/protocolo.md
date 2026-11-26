@@ -70,7 +70,16 @@ El número de empleado se guarda en `agents.agent_id`. Los errores responden
 | `POST /api/portal/agentes/:id/reactivar` | — | Reactivar. `200`; `404`; `409` si ya hay otro agente activo con ese nombre. |
 
 Los cambios se reflejan al momento en la presencia (extensión y portal) sin
-reiniciar el servidor. Ya no hace falta `npm run agentes` con el servidor
+reiniciar el servidor.
+
+### Avisos (portal, pestaña En vivo)
+
+| Ruta | Respuesta |
+|---|---|
+| `GET /api/portal/avisos/ayuda` | `[{ agente, estado, conversacion, desde }]`: quién pide ayuda **ahora** (presencia en vivo) y desde cuándo (último `help_request` de la bitácora). |
+| `GET /api/portal/avisos/duplicidades?desde=<seg>` | `[{ id, contacto, agentes, cuando }]`: alertas de duplicidad desde esa fecha, la más reciente primero (máx. 10). Sin `desde`: últimas 24 h. El portal manda el inicio de su día. |
+
+Las fechas van en segundos Unix (UTC); el portal las muestra en hora local. Ya no hace falta `npm run agentes` con el servidor
 detenido.
 
 Cada agente de la presencia (`agents`) incluye, entre otros campos, `requesting`

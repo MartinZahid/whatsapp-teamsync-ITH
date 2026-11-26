@@ -6,6 +6,7 @@
 //                             de la extensión para mostrar a quién elegir).
 //      APIs del portal: un archivo por recurso en la carpeta `api/`.
 //        /api/portal/agentes...  -> api/agentes.ts (CRUD de agentes)
+//        /api/portal/avisos/...  -> api/avisos.ts  (ayuda y duplicidades)
 //   2. Portal web (dashboard): cualquier otra ruta entrega un archivo de la
 //      carpeta `portal-web/` (HTML, CSS). "/" entrega el login.
 //        http://localhost:3001/              -> portal-web/login.html
@@ -16,8 +17,10 @@ import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { extname, resolve, sep } from 'node:path'
 import type { AgenteRegistrado } from '../datos/bitacora.js'
+import type { Avisos } from '../logica/avisos.js'
 import type { GestionAgentes } from '../logica/gestion-agentes.js'
 import { apiAgentes } from './api/agentes.js'
+import { apiAvisos } from './api/avisos.js'
 import { responder } from './api/comun.js'
 
 // Quien lea los agentes (la bitácora). null = no hay base.
@@ -37,8 +40,8 @@ const TIPOS: Record<string, string> = {
   '.ico': 'image/x-icon'
 }
 
-// `gestion` = null si el servidor corre sin base (DB_PATH=off).
-export function crearManejadorHttp(agentes: FuenteAgentes, gestion: GestionAgentes | null) {
+// `gestion` y `avisos` = null si el servidor corre sin base (DB_PATH=off).
+export function crearManejadorHttp(agentes: FuenteAgentes, gestion: GestionAgentes | null, avisos: Avisos | null) {
   return (req: IncomingMessage, res: ServerResponse): void => {
     // Solo la ruta, sin "?usuario=..." ni otros parámetros.
     const ruta = new URL(req.url ?? '/', 'http://localhost').pathname
@@ -46,6 +49,11 @@ export function crearManejadorHttp(agentes: FuenteAgentes, gestion: GestionAgent
     if (ruta.startsWith('/api/portal/agentes')) {
       // Leer el cuerpo es asíncrono; un error inesperado responde 500.
       apiAgentes(req, res, ruta, gestion).catch(() => responder(res, 500, { error: 'Error del servidor' }))
+      return
+    }
+
+    if (ruta.startsWith('/api/portal/avisos/')) {
+      apiAvisos(req, res, avisos)
       return
     }
 
