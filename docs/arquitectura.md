@@ -35,7 +35,10 @@ server/src/
   server.ts            # Arranque: crea las piezas y las une (sin lógica)
   transporte/
     websocket.ts       # Canal con la extensión
-    http.ts            # API HTTP (lista de agentes) y entrega de portal-web/
+    http.ts            # reparte las peticiones HTTP y entrega portal-web/
+    api/               # APIs del portal: un archivo por recurso
+      comun.ts         #   responder() y leerJson()
+      agentes.ts       #   CRUD de agentes (/api/portal/agentes)
   logica/
     room-manager.ts    # Presencia, estados, duplicidad, heartbeat
   datos/               # SQLite (sql.js): conexión, esquema, agentes, contactos, bitácora
