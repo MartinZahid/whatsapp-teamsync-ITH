@@ -79,6 +79,17 @@ reiniciar el servidor.
 | `GET /api/portal/avisos/ayuda` | `[{ agente, estado, conversacion, desde }]`: quién pide ayuda **ahora** (presencia en vivo) y desde cuándo (último `help_request` de la bitácora). |
 | `GET /api/portal/avisos/duplicidades?desde=<seg>` | `[{ id, contacto, agentes, cuando }]`: alertas de duplicidad desde esa fecha, la más reciente primero (máx. 10). Sin `desde`: últimas 24 h. El portal manda el inicio de su día. |
 
+### Historial (portal, pestaña Historial)
+
+| Ruta | Respuesta |
+|---|---|
+| `GET /api/portal/historial/sesiones` | `{ total, pagina, porPagina, filas: [{ id, agente, contacto, sinNombre, inicio, fin, duracion, abierta }] }`: sesiones de atención, la más reciente primero. |
+| `GET /api/portal/historial/eventos` | `{ total, pagina, porPagina, filas: [{ id, cuando, tipo, agentes, contacto, sinNombre, duracion, motivo }] }`: bitácora de eventos, el más reciente primero. `agentes` trae los dos agentes en una duplicidad; `duracion` solo en `chat_end`; `motivo` solo en `disconnected`. |
+
+Parámetros opcionales (los dos): `agente` (id), `contacto` (parte del nombre o
+del número), `desde` y `hasta` (segundos Unix), `pagina` (desde 1). 10 filas por
+página. Filtrar por agente incluye las duplicidades donde participó.
+
 Las fechas van en segundos Unix (UTC); el portal las muestra en hora local. Ya no hace falta `npm run agentes` con el servidor
 detenido.
 

@@ -690,6 +690,11 @@ a.chip {
   font-weight: 700;
 }
 
+.pagina:disabled {             /* Flecha sin más páginas hacia ese lado */
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* ---------- Contactos ---------- */
 .encabezado-seccion {
   display: flex;
