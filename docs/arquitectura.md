@@ -41,6 +41,7 @@ server/src/
       agentes.ts       #   CRUD de agentes (/api/portal/agentes)
       avisos.ts        #   ayuda y duplicidades (/api/portal/avisos/...)
       historial.ts     #   sesiones y bitácora (/api/portal/historial/...)
+      contactos.ts     #   lista y editar nombre (/api/portal/contactos)
   logica/
     room-manager.ts    # Presencia, estados, duplicidad, heartbeat
   datos/               # SQLite (sql.js): conexión, esquema, agentes, contactos, bitácora
@@ -86,6 +87,7 @@ Estas carpetas se crean cuando empiece su paso del plan; hoy no existen.
       `eliminarAgente()`, `reactivarAgente()`.
     - `avisos.js` — `listarAyuda()`, `listarDuplicidades(desde)`.
     - `historial.js` — `listarSesiones(filtros, pagina)`, `listarEventos(filtros, pagina)`.
+    - `contactos.js` — `listarContactos()`, `editarContacto(id, nombre, numero)`.
 - `data/` — archivo SQLite (no se versiona).
 
 ## Orden de trabajo

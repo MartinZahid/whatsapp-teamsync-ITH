@@ -90,6 +90,16 @@ Parámetros opcionales (los dos): `agente` (id), `contacto` (parte del nombre o
 del número), `desde` y `hasta` (segundos Unix), `pagina` (desde 1). 10 filas por
 página. Filtrar por agente incluye las duplicidades donde participó.
 
+### Contactos (portal, pestaña Contactos)
+
+| Ruta | Cuerpo | Respuesta |
+|---|---|---|
+| `GET /api/portal/contactos` | — | `[{ id, nombre, sinNombre, telefono, enWhatsapp, sesiones, ultimaVez }]`, el más reciente primero. |
+| `PUT /api/portal/contactos/:id` | `{ nombre, numero }` | Ponerle nombre y número (opcional). `200`; `400` si falta el nombre, el nombre es un número o el número no es válido; `404`. |
+
+El cambio es solo visual: el chat se sigue reconociendo por cómo aparece en
+WhatsApp (`wa_id`), y abrirlo otra vez no borra el nombre puesto en el portal.
+
 Las fechas van en segundos Unix (UTC); el portal las muestra en hora local. Ya no hace falta `npm run agentes` con el servidor
 detenido.
 

@@ -51,8 +51,7 @@
         <input class="buscador" id="buscar-contacto" type="search" placeholder="Buscar por nombre o número">
       </div>
 
-      <!-- Las filas son de ejemplo: las reemplaza js/contactos.js.
-           Cada fila guarda sus datos en data-nombre, data-numero y data-whatsapp. -->
+      <!-- Las filas son de ejemplo: las reemplaza js/contactos.js. -->
       <div class="contenedor-tabla">
         <table class="tabla">
           <thead>
@@ -111,14 +110,15 @@
       </div>
       <div class="campo">
         <label for="contacto-numero">Número</label>
-        <input id="contacto-numero" name="numero" type="tel">
+        <input id="contacto-numero" name="numero" type="tel" placeholder="Opcional">
       </div>
+      <p class="mensaje-error" hidden></p>
       <div class="ventana-botones">
         <button class="boton boton-secundario" type="submit" value="cancelar" formnovalidate>Cancelar</button>
         <button class="boton" type="submit" value="guardar">Guardar</button>
       </div>
     </form>
   </dialog>
-  <script src="js/contactos.js"></script>
+  <script type="module" src="js/contactos.js"></script>
 </body>
 </html>

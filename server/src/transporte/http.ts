@@ -8,6 +8,7 @@
 //        /api/portal/agentes...  -> api/agentes.ts (CRUD de agentes)
 //        /api/portal/avisos/...  -> api/avisos.ts  (ayuda y duplicidades)
 //        /api/portal/historial/... -> api/historial.ts (sesiones y bitácora)
+//        /api/portal/contactos...  -> api/contactos.ts (lista y editar nombre)
 //   2. Portal web (dashboard): cualquier otra ruta entrega un archivo de la
 //      carpeta `portal-web/` (HTML, CSS). "/" entrega el login.
 //        http://localhost:3001/              -> portal-web/login.html
@@ -19,10 +20,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { extname, resolve, sep } from 'node:path'
 import type { AgenteRegistrado } from '../datos/bitacora.js'
 import type { Avisos } from '../logica/avisos.js'
+import type { Contactos } from '../logica/contactos.js'
 import type { GestionAgentes } from '../logica/gestion-agentes.js'
 import type { Historial } from '../logica/historial.js'
 import { apiAgentes } from './api/agentes.js'
 import { apiAvisos } from './api/avisos.js'
+import { apiContactos } from './api/contactos.js'
 import { apiHistorial } from './api/historial.js'
 import { responder } from './api/comun.js'
 
@@ -43,12 +46,13 @@ const TIPOS: Record<string, string> = {
   '.ico': 'image/x-icon'
 }
 
-// `gestion`, `avisos` e `historial` = null si el servidor corre sin base (DB_PATH=off).
+// `gestion`, `avisos`, `historial` y `contactos` = null si el servidor corre sin base (DB_PATH=off).
 export function crearManejadorHttp(
   agentes: FuenteAgentes,
   gestion: GestionAgentes | null,
   avisos: Avisos | null,
-  historial: Historial | null
+  historial: Historial | null,
+  contactos: Contactos | null
 ) {
   return (req: IncomingMessage, res: ServerResponse): void => {
     // Solo la ruta, sin "?usuario=..." ni otros parámetros.
@@ -67,6 +71,11 @@ export function crearManejadorHttp(
 
     if (ruta.startsWith('/api/portal/historial/')) {
       apiHistorial(req, res, historial)
+      return
+    }
+
+    if (ruta.startsWith('/api/portal/contactos')) {
+      apiContactos(req, res, ruta, contactos).catch(() => responder(res, 500, { error: 'Error del servidor' }))
       return
     }
 

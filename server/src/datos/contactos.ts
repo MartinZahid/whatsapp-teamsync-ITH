@@ -50,3 +50,32 @@ export function telefonoDe(nombre: string): string | null {
   const digitos = nombre.replace(/\D/g, '')
   return digitos.length >= 8 && digitos.length <= 15 ? digitos : null
 }
+
+// ---------- Pestaña Contactos del portal ----------
+
+export interface FilaContacto {
+  id: number
+  waId: string           // como aparece en WhatsApp (normalizado)
+  nombre: string
+  telefono: string | null
+  ultimaVez: number      // segundos Unix
+  sesiones: number       // cuántas atenciones ha tenido
+}
+
+const COLUMNAS = `c.id, c.wa_id AS waId, c.name AS nombre, c.phone AS telefono, c.last_seen AS ultimaVez,
+  (SELECT COUNT(*) FROM sessions s WHERE s.contact_ref = c.id) AS sesiones`
+
+// Todos los contactos, el más reciente primero.
+export function listarContactos(base: BaseDeDatos): FilaContacto[] {
+  return base.todas<FilaContacto>(`SELECT ${COLUMNAS} FROM contacts c ORDER BY c.last_seen DESC, c.id DESC`)
+}
+
+export function buscarContactoPorId(base: BaseDeDatos, id: number): FilaContacto | null {
+  return base.una<FilaContacto>(`SELECT ${COLUMNAS} FROM contacts c WHERE c.id = ?`, [id])
+}
+
+// Cambia el nombre que se ve en el portal y el teléfono. `wa_id` NO cambia:
+// así el chat se sigue reconociendo cuando un agente lo vuelve a abrir.
+export function actualizarContacto(base: BaseDeDatos, id: number, nombre: string, telefono: string | null): void {
+  base.ejecutar('UPDATE contacts SET name = ?, phone = ? WHERE id = ?', [nombre, telefono, id])
+}

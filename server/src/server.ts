@@ -11,6 +11,7 @@ import { BitacoraNula } from './datos/bitacora.js'
 import { BitacoraSqlite } from './datos/bitacorasqlite.js'
 import { BaseDeDatos } from './datos/conexion.js'
 import { Avisos } from './logica/avisos.js'
+import { Contactos } from './logica/contactos.js'
 import { GestionAgentes } from './logica/gestion-agentes.js'
 import { Historial } from './logica/historial.js'
 import { RoomManager } from './logica/room-manager.js'
@@ -37,13 +38,14 @@ const roomManager = new RoomManager(bitacora)
 // Aquí: revisa cada 5 s qué agentes dejaron de dar señal (más de 15 s).
 setInterval(() => roomManager.checkHeartbeats(), HEARTBEAT_CHECK_MS)
 
-// Lógica del portal: gestión de agentes, avisos e historial (solo si hay base).
+// Lógica del portal: gestión de agentes, avisos, historial y contactos (solo si hay base).
 const gestion = base ? new GestionAgentes(base, roomManager) : null
 const avisos = base ? new Avisos(base, roomManager) : null
 const historial = base ? new Historial(base) : null
+const contactos = base ? new Contactos(base) : null
 
 // Transporte HTTP: API para la extensión y el portal, y las páginas del portal.
-const httpServer = createServer(crearManejadorHttp(() => bitacora.agentesRegistrados(), gestion, avisos, historial))
+const httpServer = createServer(crearManejadorHttp(() => bitacora.agentesRegistrados(), gestion, avisos, historial, contactos))
 
 // Transporte WebSocket: comparte el puerto del servidor HTTP.
 attachWebSocket(httpServer, roomManager)
