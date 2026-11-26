@@ -1,14 +1,23 @@
 // Comportamiento de la página En vivo.
 //
 // GUÍA DE LECTURA:
-//   1. Pide los agentes al servidor (GET /api/portal/agentes) al abrir la
-//      página y cada 5 s, y llena las dos tablas y los contadores.
+//   Este archivo solo maneja la pantalla. Lo que habla con el servidor está en
+//   js/consumo/agentes.js.
+//   1. Pide los agentes al servidor al abrir la página y cada 5 s, y llena las
+//      dos tablas y los contadores.
 //   2. Las ventanas de agregar, editar y eliminar, y el botón Reactivar, mandan
 //      el cambio al servidor y vuelven a cargar la lista.
 //   3. Si el servidor rechaza algo (nombre o número repetido, faltan datos), el
 //      mensaje se muestra dentro de la ventana y esta no se cierra.
 
-const API = '/api/portal/agentes'
+import {
+  agregarAgente,
+  editarAgente,
+  eliminarAgente,
+  listarAgentes,
+  reactivarAgente
+} from './consumo/agentes.js'
+
 const CADA_MS = 5000
 
 const ESTADOS = {
@@ -25,25 +34,12 @@ const ICONO_REACTIVAR = '<svg width="16" height="16" viewBox="0 0 24 24" fill="n
 let agentes = []        // última lista que mandó el servidor
 let seleccionado = null // agente de la ventana abierta (editar o eliminar)
 
-// ---------- Hablar con el servidor ----------
-
-// Hace la petición y devuelve la respuesta en JSON. Si el servidor responde
-// con error, lanza un Error con su mensaje (p. ej. "Ya hay un agente activo...").
-async function pedir(metodo, ruta, datos) {
-  const respuesta = await fetch(ruta, {
-    method: metodo,
-    headers: datos ? { 'Content-Type': 'application/json' } : undefined,
-    body: datos ? JSON.stringify(datos) : undefined
-  })
-  const cuerpo = await respuesta.json().catch(() => ({}))
-  if (!respuesta.ok) throw new Error(cuerpo.error || 'No se pudo completar la acción')
-  return cuerpo
-}
+// ---------- Cargar del servidor ----------
 
 async function cargar() {
   const nota = document.getElementById('ultima-actualizacion')
   try {
-    agentes = await pedir('GET', API)
+    agentes = await listarAgentes()
     pintar()
     nota.textContent = `Se actualiza solo · ${new Date().toLocaleTimeString('es-MX')}`
   } catch {
@@ -173,7 +169,7 @@ document.addEventListener('click', async (evento) => {
       break
     case 'reactivar':
       try {
-        await pedir('POST', `${API}/${seleccionado.id}/reactivar`)
+        await reactivarAgente(seleccionado.id)
         await cargar()
       } catch (error) {
         alert(error.message)
@@ -202,11 +198,9 @@ function alConfirmar(ventana, accion) {
   })
 }
 
-alConfirmar(ventanaAgregar, (datos) =>
-  pedir('POST', API, { empleado: datos.get('empleado'), nombre: datos.get('nombre') }))
-alConfirmar(ventanaEditar, (datos) =>
-  pedir('PUT', `${API}/${seleccionado.id}`, { empleado: datos.get('empleado'), nombre: datos.get('nombre') }))
-alConfirmar(ventanaEliminar, () => pedir('DELETE', `${API}/${seleccionado.id}`))
+alConfirmar(ventanaAgregar, (datos) => agregarAgente(datos.get('empleado'), datos.get('nombre')))
+alConfirmar(ventanaEditar, (datos) => editarAgente(seleccionado.id, datos.get('empleado'), datos.get('nombre')))
+alConfirmar(ventanaEliminar, () => eliminarAgente(seleccionado.id))
 
 // ---------- Arranque ----------
 cargar()
