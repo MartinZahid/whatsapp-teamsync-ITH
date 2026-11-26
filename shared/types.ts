@@ -42,10 +42,13 @@ export type ClientToServerMessage =
   | { type: 'HEARTBEAT'; agent: string }
   // Solicitud de ayuda (RN-03): no cambia el estado, es un aviso independiente.
   | { type: 'HELP_REQUEST'; agent: string; requesting: boolean }
+  // El agente empezó a escribir en el chat que tiene abierto (RN-07).
+  | { type: 'WRITING'; agent: string; contact: string }
 
 // --- Mensajes del servidor hacia el cliente (extensión) ---
 
-// Alerta de duplicidad (RN-07): dos o más agentes atienden el mismo contacto.
+// Alerta de duplicidad (RN-07): dos o más agentes ESCRIBIERON en el mismo
+// chat. Solo la reciben los agentes involucrados.
 export interface DuplicateAlertMessage {
   type: 'DUPLICATE_ALERT'
   contact: string

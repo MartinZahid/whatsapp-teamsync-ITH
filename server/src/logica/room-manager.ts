@@ -10,6 +10,8 @@
 //     2. Envía mensajes (atiende, pausa, etc.)  -> handleMessage()
 //     3. Al cerrar la pestaña                   -> disconnect()
 //     4. Si deja de dar señal (heartbeat)       -> checkHeartbeats()
+//     5. Duplicidad (RN-07): cuando DOS agentes ESCRIBEN en el mismo chat
+//        -> registrarEscritura() + alertDuplicate()
 //   Cada cambio termina llamando a broadcastPresence(), que reenvía la lista
 //   completa de agentes a TODOS los conectados.
 
@@ -26,7 +28,8 @@ import { APP_VERSION } from '../../../shared/version.js'
 import { BitacoraNula, type Bitacora } from '../datos/bitacora.js'
 
 // Tiempo sin señal tras el cual un agente se considera desconectado (RN-04).
-const HEARTBEAT_TIMEOUT_MS = 60000
+// La extensión manda señal cada 5 s mientras WhatsApp está abierto.
+const HEARTBEAT_TIMEOUT_MS = 15000
 
 // `Map<clave, valor>` = diccionario: busca por clave en tiempo constante.
 // Aquí la clave es el id interno del agente.
@@ -36,6 +39,9 @@ export class RoomManager {
   private agents = new Map<string, Agent>()
   // Conexión WebSocket de cada agente, indexada por su id interno.
   private connections = new Map<string, WebSocket>()
+  // En qué chat ya ESCRIBIÓ cada agente (nombre normalizado). Se borra al
+  // cambiar de chat o de estado. Sirve para la duplicidad (RN-07).
+  private escribioEn = new Map<string, string>()
 
   // La bitácora se recibe desde fuera (server.ts). Si no se da, no se guarda nada.
   // Si hay base, solo pueden conectarse los agentes dados de alta en ella.
@@ -114,6 +120,8 @@ export class RoomManager {
     const before = agent.status
     const contactBefore = agent.contact
     const sameChat = agent.status === 'attending' && status === 'attending' && agent.contact === contact
+    // Si deja el chat (o cambia a otro), ya no cuenta que haya escrito en él.
+    if (!sameChat) this.escribioEn.delete(agent.id)
     agent.status = status
     agent.contact = contact
     if (status !== 'attending') agent.attendingSince = null
@@ -145,14 +153,14 @@ export class RoomManager {
         const sameChat = agent.status === 'attending' && agent.contact === message.contact
         this.setStatus(agent, 'attending', message.contact)
         this.broadcastPresence()
-        // Solo revisamos duplicidad si de verdad empezó un chat nuevo; si es
-        // el mismo (reenvío tras reconexión) la alerta ya se dio en su momento.
-        if (!sameChat) {
-          console.log(`[Servidor] ${agent.name} atiende: ${message.contact}`)
-          this.alertDuplicate(agent)
-        }
+        // Abrir un chat ya NO es duplicidad: solo cuenta al escribir (WRITING).
+        if (!sameChat) console.log(`[Servidor] ${agent.name} atiende: ${message.contact}`)
         return
       }
+      case 'WRITING':
+        // Solo la primera vez que escribe en este chat se revisa la duplicidad.
+        if (this.registrarEscritura(agent, message.contact)) this.alertDuplicate(agent)
+        return
       case 'AVAILABLE':
         this.setStatus(agent, 'available')
         console.log(`[Servidor] ${agent.name} disponible`)
@@ -178,6 +186,13 @@ export class RoomManager {
     }
 
     this.broadcastPresence()
+  }
+
+  // Agrega a la presencia un agente recién dado de alta (o reactivado) desde
+  // el portal, como Desconectado, y avisa a todos.
+  agregarAgente(name: string): void {
+    if (this.getAllAgents().some((a) => a.name === name)) return
+    if (this.cargarDeLaBase(name)) this.broadcastPresence()
   }
 
   // Busca en la base un agente que se dio de alta después de arrancar el
@@ -209,6 +224,7 @@ export class RoomManager {
     if (agent.status !== 'offline') this.goOffline(agent, 'baja del agente')
     this.bitacora.bajaAgente(agent)
     this.agents.delete(agent.id)
+    this.escribioEn.delete(agent.id)
     ws?.close()
     console.log(`[Servidor] Agente dado de baja: ${agent.name}`)
     this.broadcastPresence()
@@ -223,32 +239,47 @@ export class RoomManager {
     }
   }
 
-  // RN-07: avisa a todos si otro agente ya atiende el mismo contacto.
-  private alertDuplicate(agent: Agent): void {
-    if (!agent.contact) return
+  // Marca que el agente escribió en el chat que tiene abierto. Devuelve true
+  // solo la PRIMERA vez por chat (para no repetir la alerta en cada mensaje).
+  private registrarEscritura(agent: Agent, contact: unknown): boolean {
+    if (typeof contact !== 'string' || agent.status !== 'attending' || !agent.contact) return false
     const key = normalizeContact(agent.contact)
-    if (!key) return
+    // Debe ser el chat que el servidor sabe que tiene abierto.
+    if (!key || normalizeContact(contact) !== key) return false
+    if (this.escribioEn.get(agent.id) === key) return false
+    this.escribioEn.set(agent.id, key)
+    return true
+  }
 
-    const others = this.getAllAgents().filter(
+  // Los OTROS agentes que tienen abierto el mismo chat y ya escribieron en él.
+  private otrosQueEscribieron(agent: Agent): Agent[] {
+    const key = this.escribioEn.get(agent.id)
+    if (!key) return []
+    return this.getAllAgents().filter(
       (other) =>
         other.id !== agent.id &&
         other.status === 'attending' &&
-        other.contact !== null &&
-        normalizeContact(other.contact) === key
+        this.escribioEn.get(other.id) === key
     )
-    if (others.length === 0) return
+  }
 
+  // RN-07: dos o más agentes ESCRIBIERON en el mismo chat. Avisa SOLO a ellos.
+  private alertDuplicate(agent: Agent): void {
+    const others = this.otrosQueEscribieron(agent)
+    if (others.length === 0 || !agent.contact) return
+
+    const involucrados = [agent, ...others]
     const alert: DuplicateAlertMessage = {
       type: 'DUPLICATE_ALERT',
       contact: agent.contact,
-      agents: [agent, ...others].map((a) => ({ id: a.id, name: a.name })),
+      agents: involucrados.map((a) => ({ id: a.id, name: a.name })),
       at: Date.now()
     }
     console.log(
       `[Servidor] Atención duplicada en "${agent.contact}": ${alert.agents.map((a) => a.name).join(', ')}`
     )
-    this.bitacora.duplicidad([agent, ...others])
-    this.sendToAll(alert)
+    this.bitacora.duplicidad(involucrados)
+    for (const a of involucrados) this.sendTo(a.id, alert)
   }
 
   // Marca al agente como desconectado cuando se cierra SU conexión actual.
@@ -294,6 +325,12 @@ export class RoomManager {
   // Envía la lista completa de agentes a todos los conectados.
   private broadcastPresence(): void {
     this.sendToAll({ type: 'PRESENCE_UPDATE', agents: this.getAllAgents() })
+  }
+
+  // Envía un mensaje a UN agente (si está conectado).
+  private sendTo(agentId: string, message: ServerToClientMessage): void {
+    const ws = this.connections.get(agentId)
+    if (ws) this.send(ws, message)
   }
 
   private sendToAll(message: ServerToClientMessage): void {

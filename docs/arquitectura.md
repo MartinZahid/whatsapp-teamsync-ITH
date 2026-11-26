@@ -35,7 +35,10 @@ server/src/
   server.ts            # Arranque: crea las piezas y las une (sin lógica)
   transporte/
     websocket.ts       # Canal con la extensión
-    http.ts            # API HTTP (lista de agentes) y entrega de portal-web/
+    http.ts            # reparte las peticiones HTTP y entrega portal-web/
+    api/               # APIs del portal: un archivo por recurso
+      comun.ts         #   responder() y leerJson()
+      agentes.ts       #   CRUD de agentes (/api/portal/agentes)
   logica/
     room-manager.ts    # Presencia, estados, duplicidad, heartbeat
   datos/               # SQLite (sql.js): conexión, esquema, agentes, contactos, bitácora
@@ -73,8 +76,12 @@ Estas carpetas se crean cuando empiece su paso del plan; hoy no existen.
   - `css/comun.css` — lo que comparten todas (colores, barra, pestañas, tablas).
   - `css/<página>.css` — un archivo por página con sus estilos propios
     (`login.css`, `en-vivo.css`, ...). Cada HTML carga `comun.css` y el suyo.
-  - Después: `js/api.js` (único archivo que hace `fetch` al servidor) y un
-    `js/<pestaña>.js` por página para llenar las tablas.
+  - `js/<página>.js` — solo la pantalla de cada página (tablas, ventanas, botones).
+  - `js/consumo/` — consumo de la API, un archivo por recurso (igual que
+    `server/src/transporte/api/`):
+    - `comun.js` — `pedir()`, el único lugar con `fetch`.
+    - `agentes.js` — `listarAgentes()`, `agregarAgente()`, `editarAgente()`,
+      `eliminarAgente()`, `reactivarAgente()`.
 - `data/` — archivo SQLite (no se versiona).
 
 ## Orden de trabajo

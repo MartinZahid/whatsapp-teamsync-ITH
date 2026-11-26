@@ -68,3 +68,50 @@ WhatsApp Web. Los chats no agendados aparecen como número
 - Leer el identificador interno del chat de WhatsApp (número con `@c.us`):
   lo resolvería de raíz, pero cambia la extensión y el protocolo y depende de
   la estructura de la página de WhatsApp Web.
+
+## ADR-003: la duplicidad cuenta al escribir (25/11/2026)
+
+**Contexto.** RN-07 avisaba en cuanto dos agentes tenían abierto el mismo chat.
+Eso daba falsas alarmas: un agente que solo se asomaba a un chat ya contaba
+como duplicidad, y el aviso era un texto pequeño en el panel.
+
+**Decisión.**
+
+- Es duplicidad cuando **los dos agentes escribieron** en el mismo chat. Abrirlo
+  no cuenta.
+- El aviso llega **solo a los agentes involucrados**, no a todo el equipo.
+- El aviso es una **ventana al centro de WhatsApp** que oscurece la página:
+  "Luis Ramírez también está atendiendo a "Carlos Peña"", con el botón
+  **Entendido**.
+- En la bitácora no cambia nada: `duplicate_alert` + `event_participants`.
+
+**Consecuencias.**
+
+- Los reportes de duplicidad cuentan menos casos (solo los conflictos reales).
+- Detectar que se escribe depende del HTML de WhatsApp Web (selector de la caja
+  de mensaje en `extension/src/content/escritura.ts`): hay que comprobarlo con
+  WhatsApp real y ajustarlo si WhatsApp cambia.
+- Cambia RN-07 del reporte preliminar: consultarlo con el asesor.
+
+**Alternativa descartada.** Botones "Tomar" y "Ceder" en el aviso: se
+probaron y se quitaron para mantenerlo sencillo.
+
+## ADR-004: conexión automática al abrir WhatsApp (25/11/2026)
+
+**Contexto.** Si la extensión se quedaba desconectada (otra persona eligió el
+mismo agente, el agente no estaba dado de alta, etc.), ya no se volvía a conectar
+sola: ni al abrir WhatsApp ni al elegir otra vez el mismo agente (había que
+cambiar de agente y regresar).
+
+**Decisión.**
+
+- Al abrir WhatsApp, la extensión intenta conectarse.
+- En el popup, elegir el agente (aunque sea el mismo) vuelve a intentar.
+- El popup muestra el motivo de la desconexión.
+
+**Limitación conocida (se deja así, por sencillez).** Gana el último que se
+conecta: si otra persona elige el mismo agente en su extensión, le quita la
+conexión al primero. Va junto con que el agente se identifica solo por su
+nombre, sin contraseña. Se descartó la regla "gana el que ya está conectado"
+porque agregaba un id por navegador, un error nuevo y más lógica en el servidor.
+

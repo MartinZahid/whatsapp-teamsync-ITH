@@ -16,7 +16,13 @@ servidor responde con `ERROR` (`AUTH_REQUIRED`).
 Si ya existe un agente con el mismo nombre, se **reutiliza su registro**
 (reconexión) y conserva su identidad. Si la conexión anterior seguía abierta
 (el mismo agente en otro navegador), el servidor le envía `ERROR` (`REPLACED`)
-y la cierra; la extensión que recibe `REPLACED` no intenta reconectarse.
+y la cierra; la extensión que recibe `REPLACED` no intenta reconectarse sola
+(si no, dos navegadores con el mismo agente se tumbarían en bucle).
+
+La extensión vuelve a intentar conectarse al **abrir WhatsApp** y al **elegir el
+agente** en el popup (aunque sea el mismo), aunque antes se hubiera quedado
+desconectada (`REPLACED`, `UNKNOWN_AGENT` o sin servidor). El popup muestra el
+motivo de la desconexión.
 
 ## Mensajes del cliente al servidor
 
@@ -26,8 +32,9 @@ y la cierra; la extensión que recibe `REPLACED` no intenta reconectarse.
 | `AVAILABLE` | `agent` | El agente queda disponible. |
 | `PAUSED` | `agent`, `reason?` | El agente pausa su atención. |
 | `OFFLINE` | `agent` | El agente se marca desconectado. |
-| `HEARTBEAT` | `agent` | Señal de actividad (cada 30 s). |
+| `HEARTBEAT` | `agent` | Señal de actividad (cada 5 s, solo mientras WhatsApp está abierto). |
 | `HELP_REQUEST` | `agent`, `requesting` | Solicita ayuda (`true`) o la cancela (`false`) sin cambiar de estado. |
+| `WRITING` | `agent`, `contact` | El agente escribió en el chat que tiene abierto. La extensión lo manda **una vez por chat**. |
 
 ## Mensajes del servidor al cliente
 
@@ -36,7 +43,7 @@ y la cierra; la extensión que recibe `REPLACED` no intenta reconectarse.
 | `WELCOME` | `message`, `protocol` | Bienvenida al conectar. |
 | `SERVER_INFO` | `version`, `agents` | Estado inicial tras registrarse. |
 | `PRESENCE_UPDATE` | `agents` | Lista actualizada de agentes. |
-| `DUPLICATE_ALERT` | `contact`, `agents`, `at` | Dos o más agentes atienden el mismo contacto. |
+| `DUPLICATE_ALERT` | `contact`, `agents`, `at` | Dos o más agentes **escribieron** en el mismo chat. Solo lo reciben ellos. |
 | `ERROR` | `code`, `message` | Error: `PARSE_ERROR` (no es JSON o no trae `type`), `AUTH_REQUIRED`, `UNKNOWN_AGENT` (el nombre no está dado de alta; la extensión deja de reintentar) o `REPLACED`. |
 
 La baja de agentes ya **no** viaja por el WebSocket (ADR-001): cualquier
@@ -48,6 +55,23 @@ y, después, el dashboard).
 | Ruta | Respuesta |
 |---|---|
 | `GET /api/agentes` | `[{ "name": "Ana Torres" }, ...]`: agentes activos de la tabla `agents` (lo usa el popup). `503` si el servidor corre sin base. |
+
+### Gestión de agentes (portal, pestaña En vivo)
+
+El número de empleado se guarda en `agents.agent_id`. Los errores responden
+`{ "error": "mensaje para el usuario" }`. `503` si el servidor corre sin base.
+
+| Ruta | Cuerpo | Respuesta |
+|---|---|---|
+| `GET /api/portal/agentes` | — | `[{ id, empleado, nombre, activo, alta, estado, conversacion, atendiendoDesde }]`: todos los agentes (activos e inactivos) con su estado en vivo. |
+| `POST /api/portal/agentes` | `{ empleado, nombre }` | Alta. `201`; `400` faltan datos; `409` nombre activo o número repetido. |
+| `PUT /api/portal/agentes/:id` | `{ empleado, nombre }` | Editar. `200`; `400`; `404`; `409`. Si estaba conectado se le cierra la conexión y debe volver a elegir su nombre en la extensión. |
+| `DELETE /api/portal/agentes/:id` | — | Baja lógica (pasa a Inactivos, se cierra su sesión). `200`; `404`. |
+| `POST /api/portal/agentes/:id/reactivar` | — | Reactivar. `200`; `404`; `409` si ya hay otro agente activo con ese nombre. |
+
+Los cambios se reflejan al momento en la presencia (extensión y portal) sin
+reiniciar el servidor. Ya no hace falta `npm run agentes` con el servidor
+detenido.
 
 Cada agente de la presencia (`agents`) incluye, entre otros campos, `requesting`
 (`true` cuando pidió ayuda), que es independiente de su estado.
@@ -63,9 +87,17 @@ Cada agente de la presencia (`agents`) incluye, entre otros campos, `requesting`
 
 ## Heartbeat
 
-- El cliente envía `HEARTBEAT` cada 30 segundos.
-- El servidor revisa cada 30 segundos y marca como `offline` a cualquier agente
-  que lleve más de 60 segundos sin dar señal.
+- El cliente envía `HEARTBEAT` cada 5 segundos, **solo mientras haya una
+  pestaña de WhatsApp abierta**. Si se cierra WhatsApp, se cierra Chrome, el
+  equipo hiberna o se va el internet, deja de llegar la señal.
+- El servidor revisa cada 5 segundos y marca como `offline` a cualquier agente
+  que lleve más de 15 segundos sin dar señal (en la práctica, entre 15 y 20 s).
+- Recargar WhatsApp no corta la atención: la extensión no manda nada mientras
+  la página se vuelve a abrir, y el chat sigue siendo el mismo.
+- Si el servidor ya lo marcó `offline` con WhatsApp cerrado, la extensión olvida
+  el chat; al volver a abrir WhatsApp manda su estado real.
+- Sin conexión, el popup no muestra la última lista guardada (todos aparecen
+  Desconectados).
 - Cuando se cierra la conexión, el agente también se marca como `offline`.
 - Si el servidor marcó `offline` a un agente cuyo socket sigue abierto y vuelve a
   recibir su heartbeat, la extensión detecta en `PRESENCE_UPDATE` que su estado
@@ -80,23 +112,34 @@ marca se conserva en la reconexión y se limpia cuando el agente pasa a
 
 ## Duplicidad (RN-07)
 
-Cuando un agente pasa a `Atendiendo` y otro agente ya está atendiendo el mismo
-contacto, el servidor envía `DUPLICATE_ALERT` a **todos** los conectados:
+**Abrir un chat ya no es duplicidad.** Cuenta cuando **dos o más agentes
+escriben** en el mismo chat (cambio del 25/11/2026, ver ADR-003):
+
+1. La extensión detecta que el agente teclea en la caja de mensaje de WhatsApp y
+   manda `WRITING` (una sola vez por chat; se reinicia al cambiar de chat, de
+   estado o al reconectarse).
+2. El servidor marca que ese agente escribió en ese chat. Si otro agente que
+   tiene el mismo chat abierto **también escribió**, envía `DUPLICATE_ALERT`
+   **solo a los involucrados** y lo registra en la bitácora (`duplicate_alert`
+   y `event_participants`):
 
 ```json
 {
   "type": "DUPLICATE_ALERT",
-  "contact": "Cliente SUSPIROS",
+  "contact": "Carlos Peña",
   "agents": [
-    { "id": "Luis-...", "name": "Luis" },
-    { "id": "Ana-...", "name": "Ana" }
+    { "id": "Luis-...", "name": "Luis Ramírez" },
+    { "id": "Ana-...", "name": "Ana Torres" }
   ],
   "at": 1760000000000
 }
 ```
 
+3. A cada uno le aparece una **ventana al centro de WhatsApp** (oscurece la
+   página para que no se pase por alto): *"Luis Ramírez también está atendiendo
+   a "Carlos Peña""*, con el botón **Entendido** para cerrarla. Si el agente
+   cambia de chat, la ventana se cierra sola.
+
 La comparación de contactos ignora mayúsculas, espacios al inicio/fin y
-espacios repetidos. La alerta se emite al momento de la coincidencia; no se
-repite mientras los agentes sigan en ese estado (reenviar `ATTENDING` con el
-mismo contacto no vuelve a disparar la alerta). La extensión la muestra en el
-panel flotante de WhatsApp y en el popup.
+espacios repetidos. Seguir escribiendo no repite el aviso; si uno sale del chat
+y vuelve, tiene que volver a escribir para contar.

@@ -19,6 +19,8 @@ export type UiRequest =
   | { type: 'SET_STATUS'; status: AgentStatus }
   | { type: 'SET_HELP'; requesting: boolean }
   | { type: 'CONTACT_CHANGED'; contact: string | null }
+  // El agente escribió en la caja de mensaje del chat abierto (RN-07).
+  | { type: 'WRITING' }
 
 // Mensajes que el service worker difunde a las interfaces.
 export type SwEvent =

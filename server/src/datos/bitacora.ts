@@ -23,7 +23,8 @@ export interface Bitacora {
   cambioDeEstado(agente: Agent, antes: AgentStatus, chatAntes: string | null, motivo?: string): void
   // Pidió (true) o canceló (false) ayuda. No cambia el estado (RN-03).
   ayuda(agente: Agent, solicita: boolean): void
-  // Dos o más agentes en el mismo chat (RN-07). `agentes[0]` es quien llegó.
+  // Dos o más agentes ESCRIBIERON en el mismo chat (RN-07). `agentes[0]` es
+  // quien escribió al último.
   duplicidad(agentes: Agent[]): void
   // Baja del agente (lógica: la fila se conserva).
   bajaAgente(agente: Agent): void

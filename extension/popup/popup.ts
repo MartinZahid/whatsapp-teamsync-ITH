@@ -118,13 +118,17 @@ function renderConnection(status: AppState['connection']['status']): void {
     'server-status' +
     (status === 'disconnected' ? ' bad' : status === 'connecting' ? ' warn' : '')
   const icon = status === 'connected' ? '✓' : status === 'connecting' ? '…' : '✗'
-  connectionBox.textContent = `${icon} ${CONNECTION_LABELS[status]}`
+  // Si está desconectado y se sabe por qué, se muestra el motivo
+  // (p. ej. "Este agente se abrió en otro navegador").
+  const motivo = status === 'disconnected' ? appState?.connection.message : undefined
+  connectionBox.textContent = `${icon} ${motivo ?? CONNECTION_LABELS[status]}`
 }
 
 function applyState(state: AppState): void {
   appState = state
   config = state.config
-  agents = state.agents
+  // Sin conexión, la lista guardada es vieja: todos se muestran Desconectados.
+  agents = state.connection.status === 'connected' ? state.agents : []
 
   if (document.activeElement !== urlInput && urlInput.value !== config.serverUrl) {
     urlInput.value = config.serverUrl
@@ -157,7 +161,7 @@ async function init(): Promise<void> {
   urlInput.value = config.serverUrl
 
   const [presence, connection] = await Promise.all([getPresence(), getConnection()])
-  agents = presence
+  agents = connection.status === 'connected' ? presence : []
   renderAgents()
   renderCurrent(connection.status)
   renderConnection(connection.status)

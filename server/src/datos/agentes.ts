@@ -53,3 +53,33 @@ function idDeTexto(nombre: string): string {
 export function darDeBajaAgente(base: BaseDeDatos, id: number): void {
   base.ejecutar('UPDATE agents SET active = 0 WHERE id = ?', [id])
 }
+// --- Para el portal (gestión de agentes) ---
+
+export interface FilaAgentePortal extends FilaAgente {
+  active: number     // 1 = activo, 0 = dado de baja
+  createdAt: number  // fecha de alta (segundos Unix)
+}
+
+const COLUMNAS_PORTAL = `${COLUMNAS}, active, created_at AS createdAt`
+
+// Todos los agentes, activos e inactivos, ordenados por nombre.
+export function listarTodosLosAgentes(base: BaseDeDatos): FilaAgentePortal[] {
+  return base.todas<FilaAgentePortal>(`SELECT ${COLUMNAS_PORTAL} FROM agents ORDER BY name`)
+}
+
+export function buscarAgentePorId(base: BaseDeDatos, id: number): FilaAgentePortal | null {
+  return base.una<FilaAgentePortal>(`SELECT ${COLUMNAS_PORTAL} FROM agents WHERE id = ?`, [id])
+}
+
+// `agent_id` guarda el número de empleado (es único en toda la tabla).
+export function buscarAgentePorEmpleado(base: BaseDeDatos, empleado: string): FilaAgentePortal | null {
+  return base.una<FilaAgentePortal>(`SELECT ${COLUMNAS_PORTAL} FROM agents WHERE agent_id = ?`, [empleado])
+}
+
+export function actualizarAgente(base: BaseDeDatos, id: number, empleado: string, nombre: string): void {
+  base.ejecutar('UPDATE agents SET agent_id = ?, name = ? WHERE id = ?', [empleado, nombre, id])
+}
+
+export function reactivarAgente(base: BaseDeDatos, id: number): void {
+  base.ejecutar('UPDATE agents SET active = 1 WHERE id = ?', [id])
+}

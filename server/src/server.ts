@@ -10,6 +10,7 @@ import { createServer } from 'node:http'
 import { BitacoraNula } from './datos/bitacora.js'
 import { BitacoraSqlite } from './datos/bitacorasqlite.js'
 import { BaseDeDatos } from './datos/conexion.js'
+import { GestionAgentes } from './logica/gestion-agentes.js'
 import { RoomManager } from './logica/room-manager.js'
 import { crearManejadorHttp } from './transporte/http.js'
 import { attachWebSocket } from './transporte/websocket.js'
@@ -17,7 +18,7 @@ import { attachWebSocket } from './transporte/websocket.js'
 // Configuración (se puede sobreescribir con variables de entorno PORT y HOST).
 const PORT = Number(process.env.PORT) || 3001
 const HOST = process.env.HOST || '0.0.0.0'
-const HEARTBEAT_CHECK_MS = 30000 // revisión del heartbeat cada 30 s (RN-04)
+const HEARTBEAT_CHECK_MS = 5000 // revisión del heartbeat cada 5 s (RN-04)
 // Archivo de la base. DB_PATH=off la desactiva (todo queda solo en memoria).
 const DB_PATH = process.env.DB_PATH || 'data/whatsapp_team_sync.db'
 
@@ -31,11 +32,14 @@ const bitacora = base ? new BitacoraSqlite(base) : new BitacoraNula()
 const roomManager = new RoomManager(bitacora)
 
 // `setInterval` ejecuta la función cada X milisegundos, para siempre.
-// Aquí: revisa cada 30 s qué agentes dejaron de dar señal.
+// Aquí: revisa cada 5 s qué agentes dejaron de dar señal (más de 15 s).
 setInterval(() => roomManager.checkHeartbeats(), HEARTBEAT_CHECK_MS)
 
-// Transporte HTTP: GET /api/agentes (para el popup) y un texto de "activo".
-const httpServer = createServer(crearManejadorHttp(() => bitacora.agentesRegistrados()))
+// Lógica: gestión de agentes desde el portal (solo si hay base).
+const gestion = base ? new GestionAgentes(base, roomManager) : null
+
+// Transporte HTTP: API para la extensión y el portal, y las páginas del portal.
+const httpServer = createServer(crearManejadorHttp(() => bitacora.agentesRegistrados(), gestion))
 
 // Transporte WebSocket: comparte el puerto del servidor HTTP.
 attachWebSocket(httpServer, roomManager)

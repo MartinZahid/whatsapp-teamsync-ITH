@@ -25,5 +25,11 @@ export function duplicateText(contact: string, names: string[]): string {
   return `Atención duplicada: "${contact}" (${names.join(', ')})`
 }
 
-// Cuánto tiempo se muestra el aviso de duplicidad.
+// Aviso de duplicidad en WhatsApp: "Luis Ramírez también está atendiendo a ...".
+export function attendingConflictText(contact: string, others: string[]): string {
+  const verbo = others.length > 1 ? 'también están atendiendo a' : 'también está atendiendo a'
+  return `${others.join(', ')} ${verbo} "${contact}"`
+}
+
+// Cuánto tiempo se muestra el aviso de duplicidad en el popup.
 export const ALERT_MS = 8000

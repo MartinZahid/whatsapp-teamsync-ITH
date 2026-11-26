@@ -9,7 +9,7 @@
 import type { AgentStatus } from '@shared/types'
 import { STATUS_COLORS, STATUS_LABELS } from '@shared/types'
 import { getPanelCollapsed, savePanelCollapsed, type ConnectionState } from '../lib/storage'
-import { ALERT_MS, CONNECTION_LABELS, duplicateText, initials } from '../lib/ui'
+import { CONNECTION_LABELS, attendingConflictText, initials } from '../lib/ui'
 
 type Connection = ConnectionState['status']
 
@@ -31,8 +31,10 @@ export interface PanelActions {
 // Lo que devuelve `mountPanel` para poder actualizarlo desde fuera.
 export interface Panel {
   render: (agents: PanelAgent[], selfName: string, connection: Connection) => void
-  // Muestra unos segundos el aviso de atención duplicada (RN-07).
-  showDuplicate: (contact: string, names: string[]) => void
+  // Ventana al centro: "Luis también está atendiendo a ..." (RN-07).
+  // `others` = los OTROS agentes que escribieron en el chat.
+  showDuplicate: (contact: string, others: string[]) => void
+  hideAlert: () => void
   setCollapsed: (collapsed: boolean) => void
   destroy: () => void
 }
@@ -99,15 +101,72 @@ const STYLES = `
   }
   .toggle:hover { background: rgba(255, 255, 255, 0.3); }
   .toggle svg { width: 18px; height: 18px; stroke: currentColor; }
-  .alert {
-    padding: 8px 16px;
-    background: #fef2f2;
-    border-bottom: 1px solid #fecaca;
-    color: #991b1b;
-    font-size: 12px;
-    font-weight: 600;
+  /* Ventana al centro (RN-07): oscurece WhatsApp para que no se pase por alto. */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(17, 24, 39, 0.55);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
-  .alert[hidden] { display: none; }
+  .overlay[hidden] { display: none; }
+  .dialog {
+    width: 380px;
+    max-width: calc(100vw - 32px);
+    padding: 24px;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.3);
+    text-align: center;
+  }
+  .dialog-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 24px;
+    line-height: 48px;
+  }
+  .dialog-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+  }
+  .dialog-text {
+    margin-top: 8px;
+    font-size: 15px;
+    line-height: 1.45;
+    color: #374151;
+  }
+  .dialog-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .dialog-buttons button {
+    flex: 1;
+    height: 44px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .dialog-buttons button:hover { background: #f3f4f6; }
+  .dialog-buttons .primary {
+    border-color: #dc2626;
+    background: #dc2626;
+    color: #ffffff;
+  }
+  .dialog-buttons .primary:hover { background: #b91c1c; }
   .list {
     list-style: none;
     max-height: 400px;
@@ -377,10 +436,24 @@ export function mountPanel(actions: PanelActions = {}): Panel {
   toggle.innerHTML = CHEVRON_RIGHT
   head.appendChild(toggle)
 
-  const alertBox = document.createElement('div')
-  alertBox.className = 'alert'
-  alertBox.hidden = true
-  panel.appendChild(alertBox)
+  // Ventana al centro para la duplicidad (RN-07). Va fuera del panel, sobre
+  // toda la página de WhatsApp.
+  const overlay = document.createElement('div')
+  overlay.className = 'overlay'
+  overlay.hidden = true
+  overlay.innerHTML = `
+    <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="wts-titulo">
+      <div class="dialog-icon" aria-hidden="true">!</div>
+      <div class="dialog-title" id="wts-titulo"></div>
+      <div class="dialog-text"></div>
+      <div class="dialog-buttons">
+        <button type="button" class="primary">Entendido</button>
+      </div>
+    </div>`
+  shadow.appendChild(overlay)
+  const dialogTitle = overlay.querySelector('.dialog-title') as HTMLDivElement
+  const dialogText = overlay.querySelector('.dialog-text') as HTMLDivElement
+  const okButton = overlay.querySelector('.dialog-buttons button') as HTMLButtonElement
 
   const list = document.createElement('ul')
   list.className = 'list'
@@ -574,15 +647,18 @@ export function mountPanel(actions: PanelActions = {}): Panel {
     updateFooter()
   }
 
-  let alertTimer: ReturnType<typeof setTimeout> | null = null
-  const showDuplicate = (contact: string, names: string[]): void => {
-    alertBox.textContent = duplicateText(contact, names)
-    alertBox.hidden = false
-    // Si está colapsado, lo abrimos para que el aviso se vea.
-    applyCollapsed(false)
-    if (alertTimer) clearTimeout(alertTimer)
-    alertTimer = setTimeout(() => (alertBox.hidden = true), ALERT_MS)
+  const hideAlert = (): void => {
+    overlay.hidden = true
   }
+
+  // Otro agente también escribe en este chat: ventana al centro con Entendido.
+  const showDuplicate = (contact: string, others: string[]): void => {
+    dialogTitle.textContent = 'Chat duplicado'
+    dialogText.textContent = attendingConflictText(contact, others)
+    overlay.hidden = false
+    okButton.focus()
+  }
+  okButton.addEventListener('click', hideAlert)
 
   const setCollapsed = (value: boolean): void => {
     applyCollapsed(value)
@@ -591,9 +667,8 @@ export function mountPanel(actions: PanelActions = {}): Panel {
 
   const destroy = (): void => {
     clearInterval(ticker)
-    if (alertTimer) clearTimeout(alertTimer)
     host.remove()
   }
 
-  return { render, showDuplicate, setCollapsed, destroy }
+  return { render, showDuplicate, hideAlert, setCollapsed, destroy }
 }
