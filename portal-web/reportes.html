@@ -41,10 +41,85 @@
       <p class="descripcion">Tiempos de atención, horas pico y contactos más atendidos.</p>
     </div>
 
-    <!-- Aquí irá el contenido cuando se apruebe el diseño de Reportes. -->
-    <div class="tarjeta en-construccion">
-      <p>Esta sección está en construcción.</p>
+    <!-- Periodo: al cambiarlo, js/reportes.js vuelve a pedir los datos -->
+    <form class="filtros" id="periodo">
+      <div class="campo">
+        <label for="periodo-desde">Desde</label>
+        <input id="periodo-desde" name="desde" type="date">
+      </div>
+      <div class="campo">
+        <label for="periodo-hasta">Hasta</label>
+        <input id="periodo-hasta" name="hasta" type="date">
+      </div>
+      <button class="boton boton-secundario" type="button" id="ultimos-7">Últimos 7 días</button>
+    </form>
+
+    <!-- Resumen del periodo (las cifras las pone js/reportes.js) -->
+    <section>
+      <div class="fila-titulo">
+        <h2>Resumen del periodo</h2>
+      </div>
+      <div class="resumen">
+        <div class="tarjeta-resumen destacada">
+          <span>Tiempo total atendido</span>
+          <strong id="total-tiempo">—</strong>
+        </div>
+        <div class="tarjeta-resumen">
+          <span>Sesiones atendidas</span>
+          <strong id="total-sesiones">—</strong>
+        </div>
+        <div class="tarjeta-resumen">
+          <span>Promedio por sesión</span>
+          <strong id="total-promedio">—</strong>
+        </div>
+        <div class="tarjeta-resumen">
+          <span>Contactos distintos</span>
+          <strong id="total-contactos">—</strong>
+        </div>
+        <div class="tarjeta-resumen">
+          <span>Alertas de duplicidad</span>
+          <strong class="texto-atendiendo" id="total-duplicidades">—</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gráficas (Chart.js) y contactos más atendidos -->
+    <div class="graficas">
+      <section class="tarjeta grafica">
+        <h2>Tiempo atendido por día (horas)</h2>
+        <div class="lienzo"><canvas id="grafica-dias" aria-label="Horas atendidas por día" role="img"></canvas></div>
+      </section>
+
+      <section class="tarjeta grafica">
+        <h2>Tiempo por agente (horas)</h2>
+        <div class="lienzo"><canvas id="grafica-agentes" aria-label="Horas atendidas por agente" role="img"></canvas></div>
+      </section>
+
+      <section class="tarjeta grafica">
+        <h2>Horas pico (sesiones por hora)</h2>
+        <div class="lienzo"><canvas id="grafica-horas" aria-label="Sesiones que empezaron en cada hora" role="img"></canvas></div>
+      </section>
+
+      <section class="tarjeta grafica">
+        <h2>Contactos más atendidos</h2>
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Contacto</th>
+              <th>Sesiones</th>
+              <th>Tiempo total</th>
+            </tr>
+          </thead>
+          <tbody id="filas-contactos">
+            <tr><td colspan="3" class="nota">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </section>
     </div>
   </main>
+
+  <!-- Chart.js (copia local en js/lib, funciona sin internet) -->
+  <script src="js/lib/chart.umd.min.js"></script>
+  <script type="module" src="js/reportes.js"></script>
 </body>
 </html>

@@ -749,3 +749,29 @@ a.chip {
   text-align: center;
   color: var(--texto-suave);
 }
+
+/* ---------- Reportes ---------- */
+.graficas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+  gap: 16px;
+}
+
+.grafica {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.grafica h2 {
+  font-size: 16px;
+}
+
+.lienzo {                      /* Caja del <canvas> de Chart.js */
+  position: relative;
+  height: 260px;
+}
+
+.grafica .tabla {
+  min-width: 0;
+}

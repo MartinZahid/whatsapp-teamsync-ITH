@@ -42,6 +42,7 @@ server/src/
       avisos.ts        #   ayuda y duplicidades (/api/portal/avisos/...)
       historial.ts     #   sesiones y bitácora (/api/portal/historial/...)
       contactos.ts     #   lista y editar nombre (/api/portal/contactos)
+      reportes.ts      #   tarjetas y gráficas (/api/portal/reportes)
   logica/
     room-manager.ts    # Presencia, estados, duplicidad, heartbeat
   datos/               # SQLite (sql.js): conexión, esquema, agentes, contactos, bitácora
@@ -88,6 +89,8 @@ Estas carpetas se crean cuando empiece su paso del plan; hoy no existen.
     - `avisos.js` — `listarAyuda()`, `listarDuplicidades(desde)`.
     - `historial.js` — `listarSesiones(filtros, pagina)`, `listarEventos(filtros, pagina)`.
     - `contactos.js` — `listarContactos()`, `editarContacto(id, nombre, numero)`.
+    - `reportes.js` — `obtenerReportes(desde, hasta)`.
+  - `js/lib/chart.umd.min.js` — Chart.js 4 (copia local, funciona sin internet).
 - `data/` — archivo SQLite (no se versiona).
 
 ## Orden de trabajo

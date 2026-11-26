@@ -90,6 +90,16 @@ Parámetros opcionales (los dos): `agente` (id), `contacto` (parte del nombre o
 del número), `desde` y `hasta` (segundos Unix), `pagina` (desde 1). 10 filas por
 página. Filtrar por agente incluye las duplicidades donde participó.
 
+### Reportes (portal, pestaña Reportes, RF-12)
+
+| Ruta | Respuesta |
+|---|---|
+| `GET /api/portal/reportes?desde=<seg>&hasta=<seg>` | `{ resumen: { segundos, sesiones, promedio, contactos, duplicidades }, porDia: [{ dia, segundos }], porAgente: [{ agente, segundos }], porHora: [{ hora, sesiones }], topContactos: [{ contacto, sinNombre, sesiones, segundos }] }` |
+
+Periodo opcional (sesiones que empezaron en él). Los tiempos cuentan solo
+sesiones cerradas; las horas pico cuentan todas. Días y horas en la hora local
+del equipo donde corre el servidor. Top de 5 contactos.
+
 ### Contactos (portal, pestaña Contactos)
 
 | Ruta | Cuerpo | Respuesta |
