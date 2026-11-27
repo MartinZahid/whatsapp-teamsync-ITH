@@ -24,7 +24,6 @@ npm install
 - `npm run server` — inicia el servidor en `http://localhost:3001`.
   Con el servidor corriendo, el portal web (dashboard, carpeta `portal-web/`) se abre en `http://localhost:3001/` (por ahora solo pantallas y navegación, con datos de ejemplo).
 - `npm run agentes -- alta "Ana Torres"` — da de alta agentes (también `baja` y `lista`). Detén el servidor antes: sql.js guarda la base en memoria y sobrescribiría el cambio.
-- `npm test` — compila el servidor y corre las pruebas (base en memoria).
 - `npm run dev:server` — compila el servidor en modo vigilancia.
 - `npm run build:extension` — compila la extensión en `extension/dist`.
 - `npm run typecheck:extension` — revisa los tipos de la extensión.

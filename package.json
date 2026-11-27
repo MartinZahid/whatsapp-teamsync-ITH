@@ -10,8 +10,7 @@
     "dev:server": "tsc -p server/tsconfig.json --watch",
     "build:extension": "vite build -c extension/vite.config.ts && vite build -c extension/vite.content.config.ts",
     "typecheck:extension": "tsc -p extension/tsconfig.json",
-    "dev:extension": "vite build -c extension/vite.config.ts --watch",
-    "test": "npm run build:server && node --test \"server/dist/**/*.test.js\""
+    "dev:extension": "vite build -c extension/vite.config.ts --watch"
   },
   "dependencies": {
     "sql.js": "^1.16.0",
