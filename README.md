@@ -39,8 +39,8 @@ server/
   src/
     server.ts        # Arranque: crea y une las capas
     transporte/
-      websocket.ts   # Transporte: canal WebSocket con la extensión
-      http.ts        # Transporte: GET /api/agentes
+      websocket/     # Transporte en tiempo real con la extensión (WebSocket)
+      http/          # Transporte HTTP: http.ts (rutas), api/ y portal-archivos.ts
     logica/
       room-manager.ts  # Lógica: registro de agentes y presencia
     datos/           # Datos: SQLite (sql.js) y bitácora

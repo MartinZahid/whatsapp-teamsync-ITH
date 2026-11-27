@@ -8,14 +8,14 @@ común entre todas.
 | 1. Presentación | Navegador | `extension/` | Ya existe, sin cambios |
 | | | `portal-web/` (dashboard) | Existe: pantallas y navegación (sin datos todavía) |
 | 2. Transporte | Servidor | `server/src/transporte/websocket/websocket.ts` | Ya existe |
-| | | `server/src/transporte/http/http.ts` y `http/api/` (`GET /api/agentes`, APIs del portal y archivos de `portal-web/`) | Existe; falta el login real |
+| | | `server/src/transporte/http/`: `http.ts` (reparte rutas), `api/` (una API por recurso) y `portal-archivos.ts` (archivos de `portal-web/`) | Existe; falta el login real |
 | 3. Lógica | Servidor | `server/src/logica/room-manager.ts` | Ya existe; llama a la bitácora |
 | 4. Datos | Servidor | `server/src/datos/` + SQLite en `data/` | Ya existe (agentes, contactos, sesiones, bitácora) |
 
 ```
  Navegador                     Servidor (Node)
 ┌──────────────┐  WebSocket  ┌──────────────┐   ┌──────────────────┐   ┌─────────────┐
-│ extension/   │◄───────────►│ websocket.ts │──►│                  │   │ datos/      │
+│ extension/   │◄───────────►│ websocket/   │──►│                  │   │ datos/      │
 │ (service     │             ├──────────────┤   │ room-manager.ts  │──►│ repos + SQL │──► data/*.db
 │  worker)     │             │ http/        │──►│                  │   │             │
 ├──────────────┤    HTTP     │ (router,     │   └──────────────────┘   └─────────────┘
@@ -37,9 +37,11 @@ server/src/
     websocket/         # Canal de la EXTENSIÓN (WebSocket)
       websocket.ts
     http/              # Canal del PORTAL (HTTP/JSON)
-      http.ts          #   reparte las peticiones HTTP y entrega portal-web/
-      api/             #   APIs del portal: un archivo por recurso
+      http.ts          #   solo decide a qué archivo va cada URL
+      portal-archivos.ts # entrega los HTML/CSS/JS de portal-web/
+      api/             #   APIs: un archivo por recurso
         comun.ts       #     responder() y leerJson()
+        extension.ts   #     GET /api/agentes (lista del popup de la extensión)
         agentes.ts     #     CRUD de agentes (/api/portal/agentes)
         avisos.ts      #     ayuda y duplicidades (/api/portal/avisos/...)
         historial.ts   #     sesiones y bitácora (/api/portal/historial/...)
@@ -77,9 +79,9 @@ Estas carpetas se crean cuando empiece su paso del plan; hoy no existen.
   - `events-repo.ts` — bitácora de cambios de estado, ayuda y duplicidad.
   - `contacts-repo.ts` — contactos atendidos y duración de cada atención.
   - `agent-status-repo.ts` — último estado de cada agente (para reinicios).
-- `server/src/transporte/http/`
-  - `router.ts` — sirve `portal-web/` y la API JSON.
-  - `auth.ts` — login, cookie de sesión y roles `consulta` / `gestion`.
+- `server/src/transporte/http/api/`
+  - Falta `login.ts` y `respaldo.ts`. Cada API nueva es un archivo aquí más
+    su `if` en `http/http.ts`.
 - `portal-web/` — el dashboard (ya existe: una página HTML por pestaña, sin JavaScript todavía)
   - `login.html` — inicio de sesión ("/" del servidor).
   - `en-vivo.html`, `historial.html`, `reportes.html`, `respaldo.html`.
