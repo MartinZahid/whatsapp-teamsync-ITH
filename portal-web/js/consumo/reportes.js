@@ -1,4 +1,4 @@
-// CONSUMO DE LA API — reportes (server/src/transporte/api/reportes.ts).
+// CONSUMO DE LA API — reportes (server/src/transporte/http/api/reportes.ts).
 
 import { pedir } from './comun.js'
 

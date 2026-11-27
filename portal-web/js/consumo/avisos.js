@@ -1,4 +1,4 @@
-// CONSUMO DE LA API — avisos de En vivo (server/src/transporte/api/avisos.ts).
+// CONSUMO DE LA API — avisos de En vivo (server/src/transporte/http/api/avisos.ts).
 
 import { pedir } from './comun.js'
 

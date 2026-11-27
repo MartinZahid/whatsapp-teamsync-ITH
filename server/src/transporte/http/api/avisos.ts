@@ -9,7 +9,7 @@
 //   Las fechas van en segundos Unix (UTC); el portal las muestra en hora local.
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { Avisos } from '../../logica/avisos.js'
+import type { Avisos } from '../../../logica/avisos.js'
 import { responder } from './comun.js'
 
 // `avisos` = null si el servidor corre sin base (DB_PATH=off).

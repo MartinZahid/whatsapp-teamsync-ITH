@@ -1,4 +1,4 @@
-// CONSUMO DE LA API — contactos (server/src/transporte/api/contactos.ts).
+// CONSUMO DE LA API — contactos (server/src/transporte/http/api/contactos.ts).
 
 import { pedir } from './comun.js'
 

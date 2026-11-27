@@ -1,7 +1,7 @@
 // Punto de entrada del servidor: crea las piezas de cada capa y las conecta.
 //
 // GUÍA DE LECTURA — arquitectura por capas (ver docs/arquitectura.md):
-//   - transporte/  recibe y envía mensajes (WebSocket y HTTP).
+//   - transporte/  recibe y envía mensajes: websocket/ (extensión) y http/ (portal).
 //   - logica/      decide qué pasa con la presencia (RoomManager).
 //   - datos/       guarda la base SQLite (sql.js) en disco.
 //   Este archivo no tiene lógica propia: solo arranca y une las capas.
@@ -16,8 +16,8 @@ import { GestionAgentes } from './logica/gestion-agentes.js'
 import { Historial } from './logica/historial.js'
 import { Reportes } from './logica/reportes.js'
 import { RoomManager } from './logica/room-manager.js'
-import { crearManejadorHttp } from './transporte/http.js'
-import { attachWebSocket } from './transporte/websocket.js'
+import { crearManejadorHttp } from './transporte/http/http.js'
+import { attachWebSocket } from './transporte/websocket/websocket.js'
 
 // Configuración (se puede sobreescribir con variables de entorno PORT y HOST).
 const PORT = Number(process.env.PORT) || 3001

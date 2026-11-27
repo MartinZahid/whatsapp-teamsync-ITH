@@ -7,7 +7,7 @@
 //   Las reglas están en logica/contactos.ts.
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { Contactos } from '../../logica/contactos.js'
+import type { Contactos } from '../../../logica/contactos.js'
 import { leerJson, responder } from './comun.js'
 
 // `contactos` = null si el servidor corre sin base (DB_PATH=off).

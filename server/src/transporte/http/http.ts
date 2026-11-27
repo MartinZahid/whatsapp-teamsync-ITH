@@ -1,4 +1,5 @@
-// CAPA 1 · TRANSPORTE — peticiones HTTP.
+// CAPA 1 · TRANSPORTE — peticiones HTTP (portal web y lista de agentes del popup).
+// El canal de la extensión (WebSocket) está aparte, en `transporte/websocket/`.
 //
 // GUÍA DE LECTURA:
 //   1. API (JSON):
@@ -19,12 +20,12 @@
 import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { extname, resolve, sep } from 'node:path'
-import type { AgenteRegistrado } from '../datos/bitacora.js'
-import type { Avisos } from '../logica/avisos.js'
-import type { Contactos } from '../logica/contactos.js'
-import type { GestionAgentes } from '../logica/gestion-agentes.js'
-import type { Historial } from '../logica/historial.js'
-import type { Reportes } from '../logica/reportes.js'
+import type { AgenteRegistrado } from '../../datos/bitacora.js'
+import type { Avisos } from '../../logica/avisos.js'
+import type { Contactos } from '../../logica/contactos.js'
+import type { GestionAgentes } from '../../logica/gestion-agentes.js'
+import type { Historial } from '../../logica/historial.js'
+import type { Reportes } from '../../logica/reportes.js'
 import { apiAgentes } from './api/agentes.js'
 import { apiAvisos } from './api/avisos.js'
 import { apiContactos } from './api/contactos.js'

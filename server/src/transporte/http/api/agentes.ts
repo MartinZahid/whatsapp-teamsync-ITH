@@ -11,7 +11,7 @@
 //   logica/gestion-agentes.ts.
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { ErrorGestion, GestionAgentes } from '../../logica/gestion-agentes.js'
+import type { ErrorGestion, GestionAgentes } from '../../../logica/gestion-agentes.js'
 import { leerJson, responder } from './comun.js'
 
 // `gestion` = null si el servidor corre sin base (DB_PATH=off).

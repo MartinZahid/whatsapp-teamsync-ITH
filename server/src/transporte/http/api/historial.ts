@@ -9,7 +9,7 @@
 //   `desde` y `hasta` van en segundos Unix (UTC). 10 filas por página.
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { FiltrosCrudos, Historial } from '../../logica/historial.js'
+import type { FiltrosCrudos, Historial } from '../../../logica/historial.js'
 import { responder } from './comun.js'
 
 // `historial` = null si el servidor corre sin base (DB_PATH=off).

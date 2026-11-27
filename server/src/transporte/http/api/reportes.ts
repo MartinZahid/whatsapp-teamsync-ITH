@@ -7,7 +7,7 @@
 //   respuesta: la página pinta las tarjetas y las gráficas con ella.
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { Reportes } from '../../logica/reportes.js'
+import type { Reportes } from '../../../logica/reportes.js'
 import { responder } from './comun.js'
 
 // `reportes` = null si el servidor corre sin base (DB_PATH=off).

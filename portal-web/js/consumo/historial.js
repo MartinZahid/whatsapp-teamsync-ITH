@@ -1,4 +1,4 @@
-// CONSUMO DE LA API — Historial (server/src/transporte/api/historial.ts).
+// CONSUMO DE LA API — Historial (server/src/transporte/http/api/historial.ts).
 //
 // `filtros` = { agente, contacto, desde, hasta } (los vacíos no se mandan).
 // Responden { total, pagina, porPagina, filas }.

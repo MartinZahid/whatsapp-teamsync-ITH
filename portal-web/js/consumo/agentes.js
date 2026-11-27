@@ -1,4 +1,4 @@
-// CONSUMO DE LA API — agentes (server/src/transporte/api/agentes.ts).
+// CONSUMO DE LA API — agentes (server/src/transporte/http/api/agentes.ts).
 //
 // Una función por acción del CRUD. Las páginas usan estas funciones y nunca
 // escriben las rutas ni hacen fetch por su cuenta.

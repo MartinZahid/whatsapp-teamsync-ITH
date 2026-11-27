@@ -7,8 +7,8 @@ común entre todas.
 |---|---|---|---|
 | 1. Presentación | Navegador | `extension/` | Ya existe, sin cambios |
 | | | `portal-web/` (dashboard) | Existe: pantallas y navegación (sin datos todavía) |
-| 2. Transporte | Servidor | `server/src/transporte/websocket.ts` | Ya existe |
-| | | `server/src/transporte/http.ts` (`GET /api/agentes` y archivos de `portal-web/`) | Existe; falta el login real y la API de cada pestaña |
+| 2. Transporte | Servidor | `server/src/transporte/websocket/websocket.ts` | Ya existe |
+| | | `server/src/transporte/http/http.ts` y `http/api/` (`GET /api/agentes`, APIs del portal y archivos de `portal-web/`) | Existe; falta el login real |
 | 3. Lógica | Servidor | `server/src/logica/room-manager.ts` | Ya existe; llama a la bitácora |
 | 4. Datos | Servidor | `server/src/datos/` + SQLite en `data/` | Ya existe (agentes, contactos, sesiones, bitácora) |
 
@@ -34,21 +34,27 @@ el proyecto:
 server/src/
   server.ts            # Arranque: crea las piezas y las une (sin lógica)
   transporte/
-    websocket.ts       # Canal con la extensión
-    http.ts            # reparte las peticiones HTTP y entrega portal-web/
-    api/               # APIs del portal: un archivo por recurso
-      comun.ts         #   responder() y leerJson()
-      agentes.ts       #   CRUD de agentes (/api/portal/agentes)
-      avisos.ts        #   ayuda y duplicidades (/api/portal/avisos/...)
-      historial.ts     #   sesiones y bitácora (/api/portal/historial/...)
-      contactos.ts     #   lista y editar nombre (/api/portal/contactos)
-      reportes.ts      #   tarjetas y gráficas (/api/portal/reportes)
+    websocket/         # Canal de la EXTENSIÓN (WebSocket)
+      websocket.ts
+    http/              # Canal del PORTAL (HTTP/JSON)
+      http.ts          #   reparte las peticiones HTTP y entrega portal-web/
+      api/             #   APIs del portal: un archivo por recurso
+        comun.ts       #     responder() y leerJson()
+        agentes.ts     #     CRUD de agentes (/api/portal/agentes)
+        avisos.ts      #     ayuda y duplicidades (/api/portal/avisos/...)
+        historial.ts   #     sesiones y bitácora (/api/portal/historial/...)
+        contactos.ts   #     lista y editar nombre (/api/portal/contactos)
+        reportes.ts    #     tarjetas y gráficas (/api/portal/reportes)
   logica/
     room-manager.ts    # Presencia, estados, duplicidad, heartbeat
   datos/               # SQLite (sql.js): conexión, esquema, agentes, contactos, bitácora
   herramientas/
     agentes.ts         # npm run agentes: alta/baja mientras no hay dashboard
 ```
+
+Los dos canales corren en el mismo programa y el mismo puerto (3001) porque
+comparten la base (sql.js la tiene cargada en memoria) y la presencia en vivo
+(`RoomManager`); cada uno tiene su carpeta y no se llaman entre sí.
 
 La extensión no se reorganiza: toda ella es la capa de presentación y su
 estructura (`content/`, `background/`, `popup/`, `options/`) la marca Chrome.
@@ -82,7 +88,7 @@ Estas carpetas se crean cuando empiece su paso del plan; hoy no existen.
     (`login.css`, `en-vivo.css`, ...). Cada HTML carga `comun.css` y el suyo.
   - `js/<página>.js` — solo la pantalla de cada página (tablas, ventanas, botones).
   - `js/consumo/` — consumo de la API, un archivo por recurso (igual que
-    `server/src/transporte/api/`):
+    `server/src/transporte/http/api/`):
     - `comun.js` — `pedir()`, el único lugar con `fetch`.
     - `agentes.js` — `listarAgentes()`, `agregarAgente()`, `editarAgente()`,
       `eliminarAgente()`, `reactivarAgente()`.

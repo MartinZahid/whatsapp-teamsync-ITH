@@ -13,9 +13,9 @@
 
 import type { Server } from 'node:http'
 import { WebSocketServer, WebSocket } from 'ws'
-import type { RoomManager } from '../logica/room-manager.js'
-import type { ClientToServerMessage, ErrorCode } from '../../../shared/types.js'
-import { APP_VERSION } from '../../../shared/version.js'
+import type { RoomManager } from '../../logica/room-manager.js'
+import type { ClientToServerMessage, ErrorCode } from '../../../../shared/types.js'
+import { APP_VERSION } from '../../../../shared/version.js'
 
 function sendError(ws: WebSocket, code: ErrorCode, message: string): void {
   ws.send(JSON.stringify({ type: 'ERROR', code, message }))
