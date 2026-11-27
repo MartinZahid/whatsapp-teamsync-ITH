@@ -51,6 +51,12 @@
         <label for="periodo-hasta">Hasta</label>
         <input id="periodo-hasta" name="hasta" type="date">
       </div>
+      <div class="campo">
+        <label for="periodo-agente">Agente</label>
+        <select id="periodo-agente" name="agente">
+          <option value="">Todos</option>
+        </select>
+      </div>
       <button class="boton boton-secundario" type="button" id="ultimos-7">Últimos 7 días</button>
     </form>
 
@@ -83,7 +89,13 @@
       </div>
     </section>
 
-    <!-- Gráficas (Chart.js) y contactos más atendidos -->
+    <!-- Gráficas (Chart.js) y tablas. Cada agente tiene siempre el mismo color. -->
+    <section class="tarjeta grafica">
+      <h2>Tiempo atendido por hora del día (minutos, 24 h)</h2>
+      <div class="lienzo lienzo-alto"><canvas id="grafica-horas" aria-label="Minutos atendidos en cada hora del día, una línea por agente" role="img"></canvas></div>
+      <p class="nota">Una línea por agente. Al pasar el mouse se ven los minutos de cada uno en esa hora; un clic en la leyenda oculta o muestra a un agente.</p>
+    </section>
+
     <div class="graficas">
       <section class="tarjeta grafica">
         <h2>Tiempo atendido por día (horas)</h2>
@@ -96,8 +108,8 @@
       </section>
 
       <section class="tarjeta grafica">
-        <h2>Horas pico (sesiones por hora)</h2>
-        <div class="lienzo"><canvas id="grafica-horas" aria-label="Sesiones que empezaron en cada hora" role="img"></canvas></div>
+        <h2>Tiempo por estado (horas)</h2>
+        <div class="lienzo"><canvas id="grafica-estados" aria-label="Horas atendiendo, disponible y pausado de cada agente" role="img"></canvas></div>
       </section>
 
       <section class="tarjeta grafica">
@@ -116,6 +128,27 @@
         </table>
       </section>
     </div>
+
+    <section class="tarjeta grafica">
+      <h2>Resumen por agente</h2>
+      <div class="contenedor-tabla">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Agente</th>
+              <th>Tiempo atendido</th>
+              <th>Sesiones</th>
+              <th>Promedio</th>
+              <th>Pidió ayuda</th>
+              <th>Duplicidades</th>
+            </tr>
+          </thead>
+          <tbody id="filas-agentes">
+            <tr><td colspan="6" class="nota">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <!-- Chart.js (copia local en js/lib, funciona sin internet) -->

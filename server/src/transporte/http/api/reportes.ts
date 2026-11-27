@@ -1,10 +1,10 @@
 // CAPA 1 · TRANSPORTE — API de reportes del portal (pestaña Reportes).
 //
 // GUÍA DE LECTURA:
-//   GET /api/portal/reportes?desde=<seg>&hasta=<seg>
-//       -> { resumen, porDia, porAgente, porHora, topContactos }
-//   `desde` y `hasta` son opcionales (segundos Unix). Todo en una sola
-//   respuesta: la página pinta las tarjetas y las gráficas con ella.
+//   GET /api/portal/reportes?desde=<seg>&hasta=<seg>&agente=<id>
+//       -> { resumen, porDia, porHora, porEstado, porAgente, topContactos }
+//   Todo es opcional: `desde` y `hasta` en segundos Unix; sin `agente` = todos.
+//   Todo va en una sola respuesta: la página pinta tarjetas y gráficas con ella.
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Reportes } from '../../../logica/reportes.js'
@@ -18,5 +18,9 @@ export function apiReportes(req: IncomingMessage, res: ServerResponse, reportes:
   const url = new URL(req.url ?? '/', 'http://localhost')
   if (url.pathname !== '/api/portal/reportes') return responder(res, 404, { error: 'Ruta no encontrada' })
 
-  responder(res, 200, reportes.generar(url.searchParams.get('desde'), url.searchParams.get('hasta')))
+  responder(res, 200, reportes.generar({
+    desde: url.searchParams.get('desde'),
+    hasta: url.searchParams.get('hasta'),
+    agente: url.searchParams.get('agente')
+  }))
 }

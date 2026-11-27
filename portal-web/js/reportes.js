@@ -2,37 +2,66 @@
 //
 // GUÍA DE LECTURA:
 //   Este archivo solo maneja la pantalla. Lo que habla con el servidor está en
-//   js/consumo/reportes.js. Las gráficas las dibuja Chart.js (js/lib/), que
-//   se carga antes en el HTML y deja disponible la variable global `Chart`.
-//   1. Al abrir, el periodo son los últimos 7 días.
-//   2. Pide los datos del periodo y llena las tarjetas, las 3 gráficas y la
-//      tabla de contactos. Al cambiar una fecha, vuelve a pedirlos.
+//   js/consumo/ (reportes.js y agentes.js). Las gráficas las dibuja Chart.js
+//   (js/lib/), que se carga antes en el HTML como la variable global `Chart`.
+//   1. Al abrir: periodo = últimos 7 días, agente = Todos.
+//   2. Pide los datos y llena tarjetas, gráficas y tablas. Al cambiar un
+//      filtro, vuelve a pedirlos.
+//   3. Cada agente tiene SIEMPRE el mismo color: sale de su nombre
+//      (colorDeAgente), así no cambia aunque cambie el filtro.
 
+import { listarAgentes } from './consumo/agentes.js'
 import { obtenerReportes } from './consumo/reportes.js'
 
 const NARANJA = '#EA4E2F'
 const TEXTO_SUAVE = '#5B6270'
 const LINEA_GUIA = '#EAECF0'
+const ESTADOS = [
+  { campo: 'atendiendo', texto: 'Atendiendo', color: '#B42318' },
+  { campo: 'disponible', texto: 'Disponible', color: '#12B76A' },
+  { campo: 'pausado', texto: 'Pausado', color: '#F79009' }
+]
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
 const formulario = document.getElementById('periodo')
 const campoDesde = document.getElementById('periodo-desde')
 const campoHasta = document.getElementById('periodo-hasta')
+const campoAgente = document.getElementById('periodo-agente')
 
-const graficas = {}   // las 3 gráficas dibujadas: se borran antes de redibujar
+const graficas = {}   // gráficas dibujadas: se borran antes de redibujar
 
 // ---------- Cargar del servidor ----------
 
 async function cargar() {
   try {
-    const r = await obtenerReportes(segundosDelDia(campoDesde.value, 0, 0, 0), segundosDelDia(campoHasta.value, 23, 59, 59))
+    const r = await obtenerReportes({
+      desde: segundosDelDia(campoDesde.value, 0, 0, 0),
+      hasta: segundosDelDia(campoHasta.value, 23, 59, 59),
+      agente: campoAgente.value
+    })
     pintarResumen(r.resumen)
-    pintarDias(r.porDia)
-    dibujar('grafica-agentes', 'bar', r.porAgente.map((a) => a.agente), r.porAgente.map((a) => horas(a.segundos)), 'h')
     pintarHoras(r.porHora)
+    pintarDias(r.porDia)
+    pintarAgentes(r.porAgente)
+    pintarEstados(r.porEstado)
     pintarContactos(r.topContactos)
+    pintarTablaAgentes(r.porAgente)
   } catch {
-    document.getElementById('filas-contactos').innerHTML = filaVacia('Sin conexión con el servidor.')
+    document.getElementById('filas-contactos').innerHTML = filaVacia(3, 'Sin conexión con el servidor.')
+    document.getElementById('filas-agentes').innerHTML = filaVacia(6, 'Sin conexión con el servidor.')
+  }
+}
+
+// Lista de agentes del filtro (activos e inactivos: el reporte incluye a todos).
+async function llenarAgentes() {
+  try {
+    const agentes = await listarAgentes()
+    campoAgente.innerHTML = '<option value="">Todos</option>' + agentes
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+      .map((a) => `<option value="${a.id}">${escapar(a.nombre)}${a.activo ? '' : ' (inactivo)'}</option>`)
+      .join('')
+  } catch {
+    // Sin servidor: se queda solo "Todos".
   }
 }
 
@@ -48,6 +77,23 @@ function pintarResumen(r) {
 
 // ---------- Gráficas ----------
 
+// 24 horas: una línea por agente con su color.
+function pintarHoras(porHora) {
+  const etiquetas = Array.from({ length: 24 }, (_, h) => `${dos(h)}h`)
+  const series = porHora.map((a) => ({
+    label: a.agente,
+    data: a.minutos,
+    borderColor: colorDeAgente(a.agente),
+    backgroundColor: colorDeAgente(a.agente),
+    borderWidth: 2,
+    pointRadius: 3,
+    pointHoverRadius: 6,
+    tension: 0.3,
+    cubicInterpolationMode: 'monotone'   // la curva no baja de 0 ni pasa del valor real
+  }))
+  dibujar('grafica-horas', 'line', etiquetas, series, { unidad: ' min', leyenda: true })
+}
+
 // Una barra por cada día del periodo, aunque ese día no haya atenciones (0 h).
 function pintarDias(porDia) {
   const segundosDe = Object.fromEntries(porDia.map((d) => [d.dia, d.segundos]))
@@ -56,57 +102,65 @@ function pintarDias(porDia) {
     const fecha = new Date(`${d}T00:00`)
     return `${DIAS[fecha.getDay()]} ${fecha.getDate()}/${fecha.getMonth() + 1}`
   })
-  dibujar('grafica-dias', 'bar', etiquetas, dias.map((d) => horas(segundosDe[d] ?? 0)), 'h')
+  dibujar('grafica-dias', 'bar', etiquetas, [barras('Horas', dias.map((d) => horas(segundosDe[d] ?? 0)), NARANJA)], { unidad: ' h' })
 }
 
-// Una marca por hora, de la primera a la última hora con atenciones.
-function pintarHoras(porHora) {
-  const sesionesDe = Object.fromEntries(porHora.map((h) => [h.hora, h.sesiones]))
-  const horasDelDia = []
-  if (porHora.length) {
-    for (let h = porHora[0].hora; h <= porHora[porHora.length - 1].hora; h++) horasDelDia.push(h)
-  }
-  dibujar('grafica-horas', 'line', horasDelDia.map((h) => `${dos(h)}h`), horasDelDia.map((h) => sesionesDe[h] ?? 0), ' sesiones')
+// Una barra por agente, cada una con el color del agente.
+function pintarAgentes(porAgente) {
+  const conTiempo = porAgente.filter((a) => a.segundos > 0)
+  dibujar(
+    'grafica-agentes',
+    'bar',
+    conTiempo.map((a) => a.agente),
+    [barras('Horas', conTiempo.map((a) => horas(a.segundos)), conTiempo.map((a) => colorDeAgente(a.agente)))],
+    { unidad: ' h' }
+  )
 }
 
-// Dibuja (o vuelve a dibujar) una gráfica de una sola serie.
-// `unidad` se agrega al valor del recuadro que sale al pasar el mouse.
-function dibujar(id, tipo, etiquetas, valores, unidad) {
+// Barra horizontal apilada por agente: atendiendo, disponible y pausado.
+function pintarEstados(porEstado) {
+  const series = ESTADOS.map((e) => ({
+    label: e.texto,
+    data: porEstado.map((a) => horas(a[e.campo])),
+    backgroundColor: e.color,
+    borderColor: '#FFFFFF',
+    borderWidth: { right: 2 },
+    barThickness: 22
+  }))
+  dibujar('grafica-estados', 'bar', porEstado.map((a) => a.agente), series, { unidad: ' h', leyenda: true, horizontal: true })
+}
+
+function barras(nombre, valores, color) {
+  return { label: nombre, data: valores, backgroundColor: color, borderRadius: 4, maxBarThickness: 36 }
+}
+
+// Dibuja (o vuelve a dibujar) una gráfica.
+// opciones: unidad (texto tras el valor al pasar el mouse), leyenda, horizontal (barras apiladas acostadas).
+function dibujar(id, tipo, etiquetas, series, { unidad = '', leyenda = false, horizontal = false } = {}) {
+  const sinDatos = etiquetas.length === 0 || series.every((s) => s.data.every((v) => !v))
+  const ejeValores = { beginAtZero: true, stacked: horizontal, grid: { color: LINEA_GUIA }, ticks: { color: TEXTO_SUAVE, precision: 0 } }
+  const ejeNombres = { stacked: horizontal, grid: { display: false }, ticks: { color: horizontal ? '#1F2329' : TEXTO_SUAVE } }
+
   graficas[id]?.destroy()
   graficas[id] = new Chart(document.getElementById(id), {
     type: tipo,
-    data: {
-      labels: etiquetas,
-      datasets: [{
-        data: valores,
-        backgroundColor: NARANJA,
-        borderColor: NARANJA,
-        borderWidth: tipo === 'line' ? 2 : 0,
-        borderRadius: 4,            // barras con la punta redondeada
-        maxBarThickness: 36,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        tension: 0.3,
-        cubicInterpolationMode: 'monotone' // la curva no baja de 0 ni pasa del valor real
-      }]
-    },
+    data: { labels: etiquetas, datasets: series },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      indexAxis: horizontal ? 'y' : 'x',
+      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },  // una sola serie: el título de la tarjeta la nombra
-        title: { display: valores.length === 0, text: 'Sin datos en este periodo', color: TEXTO_SUAVE },
-        tooltip: { callbacks: { label: (c) => `${c.formattedValue}${unidad}` } }
+        legend: { display: leyenda, position: 'top', align: 'start', labels: { usePointStyle: true, boxWidth: 8, color: TEXTO_SUAVE } },
+        title: { display: sinDatos, text: 'Sin datos en este periodo', color: TEXTO_SUAVE },
+        tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.formattedValue}${unidad}` } }
       },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: TEXTO_SUAVE } },
-        y: { beginAtZero: true, grid: { color: LINEA_GUIA }, ticks: { color: TEXTO_SUAVE, precision: 0 } }
-      }
+      scales: horizontal ? { x: ejeValores, y: ejeNombres } : { x: ejeNombres, y: ejeValores }
     }
   })
 }
 
-// ---------- Contactos más atendidos ----------
+// ---------- Tablas ----------
 
 function pintarContactos(lista) {
   document.getElementById('filas-contactos').innerHTML = lista.map((c) => `
@@ -114,7 +168,54 @@ function pintarContactos(lista) {
       <td>${escapar(c.contacto)}${c.sinNombre ? ' <span class="etiqueta etiqueta-gris">Sin nombre</span>' : ''}</td>
       <td class="hora">${c.sesiones}</td>
       <td class="tiempo">${duracion(c.segundos)}</td>
-    </tr>`).join('') || filaVacia('Sin atenciones en este periodo.')
+    </tr>`).join('') || filaVacia(3, 'Sin atenciones en este periodo.')
+}
+
+function pintarTablaAgentes(lista) {
+  document.getElementById('filas-agentes').innerHTML = lista.map((a) => `
+    <tr>
+      <td class="nombre"><span class="punto-agente" style="background:${colorDeAgente(a.agente)}"></span>${escapar(a.agente)}</td>
+      <td class="tiempo">${horas(a.segundos)} h</td>
+      <td class="hora">${a.sesiones}</td>
+      <td class="tiempo">${duracion(a.promedio)}</td>
+      <td class="hora">${a.ayudas}</td>
+      <td class="hora">${a.duplicidades}</td>
+    </tr>`).join('') || filaVacia(6, 'Sin actividad en este periodo.')
+}
+
+// ---------- Color de cada agente ----------
+
+// Las 5 primeras letras del nombre se convierten en un número (hash) y de ese
+// número salen el rojo, el verde y el azul. Si el color queda muy claro (no se
+// vería sobre el fondo blanco) se oscurece poco a poco hasta que se ve bien.
+// Mismo nombre = mismo color, siempre.
+function colorDeAgente(nombre) {
+  const clave = nombre.trim().toLowerCase().slice(0, 5)
+  let hash = 0
+  for (const letra of clave) hash = (Math.imul(hash, 31) + letra.codePointAt(0)) >>> 0
+  // Mezcla los bits para que nombres parecidos ("Ana T", "Ana R") den colores distintos.
+  hash = Math.imul(hash ^ (hash >>> 16), 0x45d9f3b) >>> 0
+  hash = (hash ^ (hash >>> 16)) >>> 0
+
+  let rojo = hash & 255
+  let verde = (hash >>> 8) & 255
+  let azul = (hash >>> 16) & 255
+  while (contrasteConBlanco(rojo, verde, azul) < 3) {   // 3:1 = mínimo para que una línea se vea
+    rojo = Math.floor(rojo * 0.9)
+    verde = Math.floor(verde * 0.9)
+    azul = Math.floor(azul * 0.9)
+  }
+  return `rgb(${rojo}, ${verde}, ${azul})`
+}
+
+// Contraste de un color contra el blanco (1 = igual de claro, 21 = negro).
+function contrasteConBlanco(r, g, b) {
+  const canal = (c) => {
+    const v = c / 255
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  }
+  const luz = 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b)
+  return 1.05 / (luz + 0.05)
 }
 
 // ---------- Periodo ----------
@@ -173,8 +274,8 @@ function escribir(id, valor) {
   document.getElementById(id).textContent = valor
 }
 
-function filaVacia(texto) {
-  return `<tr><td colspan="3" class="nota">${texto}</td></tr>`
+function filaVacia(columnas, texto) {
+  return `<tr><td colspan="${columnas}" class="nota">${texto}</td></tr>`
 }
 
 // Evita que un nombre con "<" o "&" rompa la tabla.
@@ -192,4 +293,5 @@ document.getElementById('ultimos-7').addEventListener('click', () => {
 
 // ---------- Arranque ----------
 ultimos7Dias()
+llenarAgentes()
 cargar()

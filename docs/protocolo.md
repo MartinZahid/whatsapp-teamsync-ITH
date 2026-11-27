@@ -94,11 +94,14 @@ página. Filtrar por agente incluye las duplicidades donde participó.
 
 | Ruta | Respuesta |
 |---|---|
-| `GET /api/portal/reportes?desde=<seg>&hasta=<seg>` | `{ resumen: { segundos, sesiones, promedio, contactos, duplicidades }, porDia: [{ dia, segundos }], porAgente: [{ agente, segundos }], porHora: [{ hora, sesiones }], topContactos: [{ contacto, sinNombre, sesiones, segundos }] }` |
+| `GET /api/portal/reportes?desde=<seg>&hasta=<seg>&agente=<id>` | `{ resumen: { segundos, sesiones, promedio, contactos, duplicidades }, porDia: [{ dia, segundos }], porHora: [{ agente, minutos: [24 valores] }], porEstado: [{ agente, atendiendo, disponible, pausado }], porAgente: [{ agente, segundos, sesiones, promedio, ayudas, duplicidades }], topContactos: [{ contacto, sinNombre, sesiones, segundos }] }` |
 
-Periodo opcional (sesiones que empezaron en él). Los tiempos cuentan solo
-sesiones cerradas; las horas pico cuentan todas. Días y horas en la hora local
-del equipo donde corre el servidor. Top de 5 contactos.
+Todo es opcional; sin `agente` = todos. Los tiempos de atención cuentan solo
+sesiones cerradas que empezaron en el periodo. `porHora` reparte el tiempo de
+cada sesión en las horas que abarcó (12:50 a 13:10 = 10 min a las 12 h y 10 a
+las 13 h). `porEstado` (segundos) mide cada cambio de estado hasta el siguiente
+del mismo agente; el último del periodo cuenta hasta el final del periodo o
+ahora. Días y horas en la hora local del equipo donde corre el servidor.
 
 ### Contactos (portal, pestaña Contactos)
 

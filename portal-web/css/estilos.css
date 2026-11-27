@@ -772,6 +772,18 @@ a.chip {
   height: 260px;
 }
 
+.lienzo-alto {
+  height: 320px;
+}
+
 .grafica .tabla {
   min-width: 0;
+}
+
+.punto-agente {                /* Círculo del color del agente en las tablas */
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
 }
